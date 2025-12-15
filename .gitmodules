@@ -1,0 +1,9 @@
+[submodule "modules/trussworks-bootstrap"]
+	path = modules/trussworks-bootstrap
+	url = https://github.com/trussworks/terraform-aws-bootstrap.git
+[submodule "modules/trussworks-logs"]
+	path = modules/trussworks-logs
+	url = https://github.com/trussworks/terraform-aws-logs.git
+[submodule "modules/trussworks-vpc-flow-logs"]
+	path = modules/trussworks-vpc-flow-logs
+	url = https://github.com/trussworks/terraform-aws-vpc-flow-logs.git
