@@ -2,19 +2,27 @@ name: Trivy
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
-  tflint:
+  trivy:
+    strategy:
+      matrix:
+        module:
+          - auto-trader
+          - infra-data
+          - infra-ecs-cluster
+          - infra-fleet-service
+          - infra-networking
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-        name: Checkout source code
 
       - name: Trivy
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "config"
+          scan-ref: ${{ matrix.module }}
           hide-progress: true
           exit-code: "1"

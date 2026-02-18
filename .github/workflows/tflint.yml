@@ -2,18 +2,29 @@ name: Lint
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
   tflint:
+    strategy:
+      matrix:
+        module:
+          - auto-trader
+          - infra-data
+          - infra-ecs-cluster
+          - infra-fleet-service
+          - infra-networking
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-        name: Checkout source code
 
       - uses: terraform-linters/setup-tflint@v3
-        name: Setup TFLint
+
+      - name: Init TFLint
+        working-directory: ${{ matrix.module }}
+        run: tflint --init
 
       - name: Run TFLint
-        run: make test_tflint
+        working-directory: ${{ matrix.module }}
+        run: tflint

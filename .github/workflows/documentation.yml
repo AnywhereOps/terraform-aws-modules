@@ -1,18 +1,26 @@
-name: Teraform-Docs
+name: Terraform-Docs
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
 jobs:
-  tflint:
+  docs:
+    strategy:
+      matrix:
+        module:
+          - auto-trader
+          - infra-ecs-cluster
+          - infra-fleet-service
+          - infra-networking
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-        name: Checkout source code
 
-      - name: Run Terraform-Docs
-        run: make test_documentation
+      - name: Check Docs
+        working-directory: ${{ matrix.module }}
+        run: |
+          if [ -f .terraform-docs.yml ]; then
+            npx terraform-docs -c .terraform-docs.yml --output-check .
+          fi
