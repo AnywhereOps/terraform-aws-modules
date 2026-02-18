@@ -1,0 +1,9 @@
+# Copy to prod.tfvars and fill in values
+# terraform apply -var-file=prod.tfvars
+
+aws_region         = "us-east-1"
+environment        = "prod"
+project            = "signal-bot"
+discord_public_key = ""
+discord_bot_token  = ""
+discord_guild_id   = ""
