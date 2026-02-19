@@ -13,7 +13,6 @@ module "logs" {
   default_allow = false
   allow_config  = true
 
-  region         = var.region
   s3_bucket_name = var.logging_bucket
 }
 
