@@ -93,7 +93,7 @@ documentation:
 	@for module in $(MODULES); do \
 		if [ -f $$module/.terraform-docs.yml ]; then \
 			echo "Generating docs for $$module"; \
-			cd $$module && terraform-docs -c .terraform-docs.yml . && cd ..; \
+			(cd $$module && terraform-docs -c .terraform-docs.yml .); \
 		fi; \
 	done
 
@@ -103,7 +103,7 @@ test_documentation:
 	@for module in $(MODULES); do \
 		if [ -f $$module/.terraform-docs.yml ]; then \
 			echo "Checking docs for $$module"; \
-			cd $$module && terraform-docs -c .terraform-docs.yml --output-check . && cd ..; \
+			(cd $$module && terraform-docs -c .terraform-docs.yml --output-check .); \
 		fi; \
 	done
 
@@ -118,7 +118,7 @@ fix_tflint:
 	tflint --fix
 	@for module in $(MODULES); do \
 		echo "Fixing lint in $$module"; \
-		cd $$module && tflint --init && tflint --fix && cd ..; \
+		(cd $$module && tflint --init && tflint --fix); \
 	done
 
 .PHONY: test_tflint
@@ -127,7 +127,7 @@ test_tflint:
 	tflint
 	@for module in $(MODULES); do \
 		echo "Linting $$module"; \
-		cd $$module && tflint --init && tflint && cd ..; \
+		(cd $$module && tflint --init && tflint); \
 	done
 
 
@@ -195,7 +195,7 @@ test_validation: .terraform
 	$(TF_BINARY) validate
 	@for module in $(MODULES); do \
 		echo "Validating $$module"; \
-		cd $$module && $(TF_BINARY) init -backend=false && $(TF_BINARY) validate && cd ..; \
+		(cd $$module && $(TF_BINARY) init -backend=false && $(TF_BINARY) validate); \
 	done
 
 
