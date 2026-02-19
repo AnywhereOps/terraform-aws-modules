@@ -35,9 +35,9 @@ variable "ecs_security_group_ids" {
 
 variable "rds_config" {
   type = object({
-    name                            = optional(string, "infra")
-    engine_version                  = optional(string, "8.0.mysql_aurora.3.07.1")
-    instance_class                  = optional(string, "db.t4g.large")
+    name           = optional(string, "infra")
+    engine_version = optional(string, "8.0.mysql_aurora.3.07.1")
+    instance_class = optional(string, "db.t4g.large")
     # Networking comes from vpc_config.subnets.database
     allowed_security_groups         = optional(list(string), [])
     allowed_cidr_blocks             = optional(list(string), [])
@@ -76,17 +76,17 @@ variable "rds_config" {
     # With general log (expensive): ["error", "slowquery", "general"]
     enabled_cloudwatch_logs_exports = optional(list(string), ["error", "slowquery"])
 
-    master_username                 = optional(string, "infra")
-    snapshot_identifier             = optional(string)
-    cluster_tags                    = optional(map(string), {})
-    preferred_maintenance_window    = optional(string, "thu:23:00-fri:00:00")
-    skip_final_snapshot             = optional(bool, false)
-    backup_retention_period         = optional(number, 7)
-    replicas                        = optional(number, 2)
-    serverless                      = optional(bool, false)
-    serverless_min_capacity         = optional(number, 2)
-    serverless_max_capacity         = optional(number, 10)
-    restore_to_point_in_time        = optional(map(string), {})
+    master_username              = optional(string, "infra")
+    snapshot_identifier          = optional(string)
+    cluster_tags                 = optional(map(string), {})
+    preferred_maintenance_window = optional(string, "thu:23:00-fri:00:00")
+    skip_final_snapshot          = optional(bool, false)
+    backup_retention_period      = optional(number, 7)
+    replicas                     = optional(number, 2)
+    serverless                   = optional(bool, false)
+    serverless_min_capacity      = optional(number, 2)
+    serverless_max_capacity      = optional(number, 10)
+    restore_to_point_in_time     = optional(map(string), {})
   })
   default = {
     name                            = "infra"
@@ -139,7 +139,7 @@ variable "redis_config" {
     allowed_security_group_ids = optional(list(string), [])
     cluster_size               = optional(number, 3)
     instance_type              = optional(string, "cache.m5.large")
-    apply_immediately          = optional(bool, false)  # Safe default for production
+    apply_immediately          = optional(bool, false) # Safe default for production
     # Enables automatic promotion of replica to primary on failure. Requires cluster_size >= 2.
     # Set to false for dev/sandbox to reduce costs. Enable for production HA.
     automatic_failover_enabled = optional(bool, true)
@@ -167,13 +167,13 @@ variable "snapshot_cleaner_config" {
     cloudwatch_logs_retention_days = optional(number, 90)
     interval_minutes               = optional(number, 5)
     # Trussworks hosts Lambda builds in their public S3 bucket
-    s3_bucket         = optional(string, "lambda-builds-us-east-1")
+    s3_bucket = optional(string, "lambda-builds-us-east-1")
   })
   default = {}
 }
 
-  variable "sns_topic_name" {
-    description = "SNS topic name for RDS alerts and notifications"
-    type        = string
-    default     = "notify-slack"
-  }
+variable "sns_topic_name" {
+  description = "SNS topic name for RDS alerts and notifications"
+  type        = string
+  default     = "notify-slack"
+}

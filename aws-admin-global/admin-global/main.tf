@@ -10,8 +10,8 @@ module "logs" {
   source  = "trussworks/logs/aws"
   version = "~> 18.0.0"
 
-  default_allow = false
-  allow_config  = true
+  default_allow  = false
+  allow_config   = true
   s3_bucket_name = var.logging_bucket
 }
 

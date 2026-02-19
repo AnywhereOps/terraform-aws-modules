@@ -146,7 +146,7 @@ module "rds" {
   name                   = var.rds_config.name
   engine                 = "aurora-mysql"
   engine_version         = var.rds_config.engine_version
-  cluster_instance_class = var.rds_config.instance_class  # v10: renamed from instance_class
+  cluster_instance_class = var.rds_config.instance_class # v10: renamed from instance_class
 
   instances = local.aurora_instances
 
@@ -211,8 +211,8 @@ module "rds" {
   # - Set to null to use external groups (don't create via module)
   # - DB parameter groups are now per-instance (see local.aurora_instances)
   # - Cluster parameter group uses cluster_parameter_group_name
-  db_parameter_group       = null  # We create externally
-  cluster_parameter_group  = null  # We create externally
+  db_parameter_group           = null # We create externally
+  cluster_parameter_group      = null # We create externally
   cluster_parameter_group_name = var.rds_config.db_cluster_parameter_group_name == null ? aws_rds_cluster_parameter_group.main[0].id : var.rds_config.db_cluster_parameter_group_name
 
   enabled_cloudwatch_logs_exports = var.rds_config.enabled_cloudwatch_logs_exports
@@ -223,10 +223,10 @@ module "rds" {
   # TODO: For production, consider adding a custom KMS key:
   # master_user_secret_kms_key_id = aws_kms_key.rds_secret.arn
 
-  database_name           = var.database_name
-  skip_final_snapshot     = var.rds_config.skip_final_snapshot
-  snapshot_identifier     = var.rds_config.snapshot_identifier
-  backup_retention_period = var.rds_config.backup_retention_period
+  database_name            = var.database_name
+  skip_final_snapshot      = var.rds_config.skip_final_snapshot
+  snapshot_identifier      = var.rds_config.snapshot_identifier
+  backup_retention_period  = var.rds_config.backup_retention_period
   restore_to_point_in_time = var.rds_config.restore_to_point_in_time
 
   preferred_maintenance_window = var.rds_config.preferred_maintenance_window
@@ -257,7 +257,7 @@ module "redis" {
   transit_encryption_enabled = var.redis_config.transit_encryption_enabled
   parameter                  = var.redis_config.parameter
   log_delivery_configuration = var.redis_config.log_delivery_configuration
-  
+
   # NOTE: Using VPC CIDR for ingress (Pattern A - SGs with resources).
   # TODO: Evaluate Gruntwork pattern (Pattern B - SGs in networking stack) for
   # tighter security group-based restrictions without circular dependencies.
@@ -328,23 +328,23 @@ module "rds-snapshot-cleaner" {
   version_to_deploy              = "2.6"
 }
 # * Get SNS topic for alerts
-  data "aws_sns_topic" "alerts" {
-    name = var.sns_topic_name
-  }
+data "aws_sns_topic" "alerts" {
+  name = var.sns_topic_name
+}
 
 # * Cloudwatch alarms for running out of burstable CPU credits and storage space
-  # TODO: Pin to commit SHA for production: ?ref=<commit-sha>
-  module "rds_alarms" {
-    source = "github.com/anywhereops/terraform-aws-rds-aurora-cloudwatch-alarms?ref=0.1.0"
-    
-    db_cluster_identifier = module.rds.cluster_id
-    alarm_actions         = [data.aws_sns_topic.alerts.arn]  # Uses ARN
-  }
+# TODO: Pin to commit SHA for production: ?ref=<commit-sha>
+module "rds_alarms" {
+  source = "github.com/anywhereops/terraform-aws-rds-aurora-cloudwatch-alarms?ref=0.1.0"
+
+  db_cluster_identifier = module.rds.cluster_id
+  alarm_actions         = [data.aws_sns_topic.alerts.arn] # Uses ARN
+}
 
 # * Slack alerts for RDS events
-  module "rds-notifications" {
-    source         = "trussworks/rds-notifications/aws"
-    version        = "4.0.0"
-    
-    sns_topic_name = var.sns_topic_name  # Uses name
-  }
+module "rds-notifications" {
+  source  = "trussworks/rds-notifications/aws"
+  version = "4.0.0"
+
+  sns_topic_name = var.sns_topic_name # Uses name
+}

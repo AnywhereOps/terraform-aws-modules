@@ -212,10 +212,10 @@ module "ecs_service_fleet" {
   name        = "fleet"
   environment = var.environment
 
-  logs_cloudwatch_retention     = var.cloudwatch_logs_retention_days
-  logs_cloudwatch_group         = format("ecs-tasks-fleet-%s", var.environment)
+  logs_cloudwatch_retention = var.cloudwatch_logs_retention_days
+  logs_cloudwatch_group     = format("ecs-tasks-fleet-%s", var.environment)
   # Fleet uses Docker Hub (fleetdm/fleet), not ECR. Default allows any registry.
-  ecr_repo_arns                 = ["*"]
+  ecr_repo_arns = ["*"]
   # ecr_repo_arns                 = [data.aws_ecr_repository.app_my_webapp.arn] # For when we build fleet image ourselves
   ecs_cluster = {
     arn  = data.aws_ecs_cluster.main.arn
@@ -239,8 +239,8 @@ module "ecs_service_fleet" {
       lb_target_group_arn         = module.alb_fleet.alb_target_group_id
     }
   ]
-  kms_key_id         = aws_kms_key.fleet_logs.arn
-  
+  kms_key_id = aws_kms_key.fleet_logs.arn
+
   container_definitions = jsonencode(
     concat([
       {
