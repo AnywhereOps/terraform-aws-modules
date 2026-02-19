@@ -235,6 +235,35 @@ module "rds" {
 }
 ### Elasticache Redis
 
+# Redis Security Group (created separately to avoid cloudposse/security-group issues)
+resource "aws_security_group" "redis" {
+  name        = format("redis-%s-%s", var.redis_config.name, var.environment)
+  description = "Security group for Redis cluster"
+  vpc_id      = var.vpc_config.vpc_id
+
+  # Allow Redis traffic from VPC CIDR
+  ingress {
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_config.vpc_cidr]
+    description = "Redis from VPC"
+  }
+
+  # Allow outbound
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound"
+  }
+
+  tags = merge(var.redis_config.tags, {
+    Name = format("redis-%s-%s", var.redis_config.name, var.environment)
+  })
+}
+
 module "redis" {
   source  = "cloudposse/elasticache-redis/aws"
   version = "2.0.0"
@@ -257,13 +286,9 @@ module "redis" {
   parameter                     = var.redis_config.parameter
   log_delivery_configuration    = var.redis_config.log_delivery_configuration
 
-  # v2.0.0: Security group configuration simplified
-  # allowed_cidr_blocks and allowed_security_group_ids still work in v2.0.0
-  allowed_cidr_blocks = [var.vpc_config.vpc_cidr]
-  allowed_security_group_ids = concat(
-    var.redis_config.allowed_security_group_ids,
-    var.ecs_security_group_ids
-  )
+  # Disable built-in security group creation (cloudposse/security-group has AWS provider v6 compatibility issues)
+  create_security_group = false
+  associated_security_group_ids = [aws_security_group.redis.id]
 
   tags = var.redis_config.tags
 }
