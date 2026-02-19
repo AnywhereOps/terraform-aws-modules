@@ -9,14 +9,17 @@ locals {
 
 # ─── S3: Lambda Deploy Bucket ────────────────────────────────────────────────
 
-resource "aws_s3_bucket" "lambda_builds" {
-  bucket = "${local.prefix}-lambda-builds"
-}
+module "lambda_builds_bucket" {
+  source  = "trussworks/s3-private-bucket/aws"
+  version = "~> 7.0"
 
-resource "aws_s3_bucket_versioning" "lambda_builds" {
-  bucket = aws_s3_bucket.lambda_builds.id
-  versioning_configuration {
-    status = "Enabled"
+  bucket         = "${local.prefix}-lambda-builds"
+  logging_bucket = var.logging_bucket
+
+  tags = {
+    Name        = "${local.prefix}-lambda-builds"
+    Environment = var.environment
+    Project     = var.project
   }
 }
 
@@ -61,7 +64,7 @@ module "signal_bot_lambda" {
   runtime        = "python3.12"
   handler        = "handler.lambda_handler"
 
-  s3_bucket = aws_s3_bucket.lambda_builds.id
+  s3_bucket = module.lambda_builds_bucket.id
   s3_key    = "signal-bot/latest.zip"
 
   timeout     = var.lambda_timeout

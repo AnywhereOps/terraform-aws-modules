@@ -25,7 +25,7 @@ output "trade_log_table_arn" {
 
 output "s3_bucket" {
   description = "S3 bucket for Lambda deployment packages"
-  value       = aws_s3_bucket.lambda_builds.id
+  value       = module.lambda_builds_bucket.id
 }
 
 output "secrets_prefix" {

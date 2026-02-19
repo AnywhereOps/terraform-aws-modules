@@ -55,3 +55,8 @@ variable "position_check_schedule" {
   type        = string
   default     = "cron(0/30 13-20 ? * MON-FRI *)"
 }
+
+variable "logging_bucket" {
+  description = "S3 bucket for access logs"
+  type        = string
+}
