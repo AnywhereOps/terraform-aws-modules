@@ -21,16 +21,16 @@ resource "aws_guardduty_detector" "main_useast1" {
 # Note: auto_enable = true means new accounts are automatically added as members.
 
 resource "aws_guardduty_organization_configuration" "main_useast2" {
-  count       = var.core_infra ? 1 : 0
-  auto_enable = true
-  detector_id = aws_guardduty_detector.main_useast2[0].id
+  count                            = var.core_infra ? 1 : 0
+  auto_enable_organization_members = "ALL"
+  detector_id                      = aws_guardduty_detector.main_useast2[0].id
 }
 
 resource "aws_guardduty_organization_configuration" "main_useast1" {
-  count       = var.core_infra ? 1 : 0
-  provider    = aws.us-east-1
-  auto_enable = true
-  detector_id = aws_guardduty_detector.main_useast1[0].id
+  count                            = var.core_infra ? 1 : 0
+  provider                         = aws.us-east-1
+  auto_enable_organization_members = "ALL"
+  detector_id                      = aws_guardduty_detector.main_useast1[0].id
 }
 
 # GuardDuty notifications to Slack
