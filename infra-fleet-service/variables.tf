@@ -133,8 +133,8 @@ variable "fleet_config" {
   type = object({
     task_mem                     = optional(number, null)
     task_cpu                     = optional(number, null)
-    mem                          = optional(number, 4096)
-    cpu                          = optional(number, 512)
+    mem                          = optional(number, 512)
+    cpu                          = optional(number, 256)
     pid_mode                     = optional(string, null)
     image                        = optional(string, "fleetdm/fleet:v4.78.0")
     family                       = optional(string, "fleet")
