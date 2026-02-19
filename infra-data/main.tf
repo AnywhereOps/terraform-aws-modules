@@ -237,7 +237,7 @@ module "rds" {
 
 module "redis" {
   source  = "cloudposse/elasticache-redis/aws"
-  version = "0.53.0"
+  version = "2.0.0"
 
   name                          = var.redis_config.name
   replication_group_id          = var.redis_config.replication_group_id == null ? var.redis_config.name : var.redis_config.replication_group_id
@@ -245,31 +245,27 @@ module "redis" {
   availability_zones            = var.vpc_config.azs
   vpc_id                        = var.vpc_config.vpc_id
   description                   = "Infra Redis"
-  #allowed_security_group_ids = concat(var.redis_config.allowed_security_group_ids, module.byo-db.ecs.security_group)
-  subnets                    = var.vpc_config.subnets.elasticache
-  cluster_size               = var.redis_config.cluster_size
-  instance_type              = var.redis_config.instance_type
-  apply_immediately          = var.redis_config.apply_immediately
-  automatic_failover_enabled = var.redis_config.automatic_failover_enabled
-  engine_version             = var.redis_config.engine_version
-  family                     = var.redis_config.family
-  at_rest_encryption_enabled = var.redis_config.at_rest_encryption_enabled
-  transit_encryption_enabled = var.redis_config.transit_encryption_enabled
-  parameter                  = var.redis_config.parameter
-  log_delivery_configuration = var.redis_config.log_delivery_configuration
+  subnets                       = var.vpc_config.subnets.elasticache
+  cluster_size                  = var.redis_config.cluster_size
+  instance_type                 = var.redis_config.instance_type
+  apply_immediately             = var.redis_config.apply_immediately
+  automatic_failover_enabled    = var.redis_config.automatic_failover_enabled
+  engine_version                = var.redis_config.engine_version
+  family                        = var.redis_config.family
+  at_rest_encryption_enabled    = var.redis_config.at_rest_encryption_enabled
+  transit_encryption_enabled    = var.redis_config.transit_encryption_enabled
+  parameter                     = var.redis_config.parameter
+  log_delivery_configuration    = var.redis_config.log_delivery_configuration
 
-  # NOTE: Using VPC CIDR for ingress (Pattern A - SGs with resources).
-  # TODO: Evaluate Gruntwork pattern (Pattern B - SGs in networking stack) for
-  # tighter security group-based restrictions without circular dependencies.
-  # See: https://github.com/gruntwork-io/terragrunt-infrastructure-catalog-example
+  # v2.0.0: Security group configuration simplified
+  # allowed_cidr_blocks and allowed_security_group_ids still work in v2.0.0
   allowed_cidr_blocks = [var.vpc_config.vpc_cidr]
   allowed_security_group_ids = concat(
     var.redis_config.allowed_security_group_ids,
     var.ecs_security_group_ids
   )
-  #
-  tags = var.redis_config.tags
 
+  tags = var.redis_config.tags
 }
 
 ###
