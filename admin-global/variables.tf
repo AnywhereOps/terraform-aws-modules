@@ -55,3 +55,15 @@ variable "log_retention_days" {
   type        = number
   default     = 90
 }
+
+variable "slack_enabled" {
+  description = "Enable Slack notifications. Requires /slack/webhook/url/anywhereops-infra SSM parameter."
+  type        = bool
+  default     = false
+}
+
+variable "guardduty_enabled" {
+  description = "Enable GuardDuty admin configuration"
+  type        = bool
+  default     = false
+}

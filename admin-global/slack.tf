@@ -5,7 +5,7 @@
 # don't want to leave it in code anywhere.
 
 data "aws_ssm_parameter" "slack_webhook_url" {
-  count = var.core_infra ? 1 : 0
+  count = var.slack_enabled ? 1 : 0
   name  = "/slack/webhook/url/anywhereops-infra"
 }
 
@@ -14,13 +14,13 @@ data "aws_ssm_parameter" "slack_webhook_url" {
 #
 
 resource "aws_sns_topic" "notify_slack_useast1" {
-  count    = var.core_infra ? 1 : 0
+  count    = var.slack_enabled ? 1 : 0
   provider = aws.us-east-1
   name     = "notify-slack"
 }
 
 resource "aws_sns_topic" "notify_slack_useast2" {
-  count = var.core_infra ? 1 : 0
+  count = var.slack_enabled ? 1 : 0
   name  = "notify-slack"
 }
 
@@ -29,7 +29,7 @@ resource "aws_sns_topic" "notify_slack_useast2" {
 #
 
 data "aws_iam_policy_document" "notify_slack_topic_policy_useast1" {
-  count = var.core_infra ? 1 : 0
+  count = var.slack_enabled ? 1 : 0
 
   statement {
     sid = "__default_statement_ID"
@@ -70,7 +70,7 @@ data "aws_iam_policy_document" "notify_slack_topic_policy_useast1" {
 }
 
 data "aws_iam_policy_document" "notify_slack_topic_policy_useast2" {
-  count = var.core_infra ? 1 : 0
+  count = var.slack_enabled ? 1 : 0
 
   statement {
     sid = "__default_statement_ID"
@@ -115,14 +115,14 @@ data "aws_iam_policy_document" "notify_slack_topic_policy_useast2" {
 #
 
 resource "aws_sns_topic_policy" "notify_slack_useast1" {
-  count    = var.core_infra ? 1 : 0
+  count    = var.slack_enabled ? 1 : 0
   provider = aws.us-east-1
   arn      = aws_sns_topic.notify_slack_useast1[0].arn
   policy   = data.aws_iam_policy_document.notify_slack_topic_policy_useast1[0].json
 }
 
 resource "aws_sns_topic_policy" "notify_slack_useast2" {
-  count  = var.core_infra ? 1 : 0
+  count  = var.slack_enabled ? 1 : 0
   arn    = aws_sns_topic.notify_slack_useast2[0].arn
   policy = data.aws_iam_policy_document.notify_slack_topic_policy_useast2[0].json
 }
@@ -132,7 +132,7 @@ resource "aws_sns_topic_policy" "notify_slack_useast2" {
 #
 
 module "notify_slack_useast1" {
-  count = var.core_infra ? 1 : 0
+  count = var.slack_enabled ? 1 : 0
 
   providers = {
     aws = aws.us-east-1
@@ -151,7 +151,7 @@ module "notify_slack_useast1" {
 }
 
 module "notify_slack_useast2" {
-  count = var.core_infra ? 1 : 0
+  count = var.slack_enabled ? 1 : 0
 
   source  = "terraform-aws-modules/notify-slack/aws"
   version = "~> 7.2.0"
