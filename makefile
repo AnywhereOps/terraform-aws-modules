@@ -34,6 +34,9 @@ INSTALLER := $(shell { basename $(INSTALLER_PATH) ; } 2>/dev/null)
 MODULE_DIRECTORY_NAME := $(shell { pwd | rev | cut -d"/" -f 1 | rev ; } 2>/dev/null)
 TERRATEST_FILES:=$(wildcard tests/*_test.go)
 
+# Submodules to test (directories containing .tf files, excluding special dirs)
+MODULES := auto-trader aws-admin-global infra-data infra-ecs-cluster infra-fleet-service infra-networking
+
 # Empty variables primarily used to allow users to pass in their own options.
 CHECKOV_OPTS:=
 GO_TEST_OPTS:=
@@ -87,10 +90,22 @@ test_formatting:
 .PHONY: documentation
 documentation:
 	terraform-docs -c .terraform-docs.yml .
+	@for module in $(MODULES); do \
+		if [ -f $$module/.terraform-docs.yml ]; then \
+			echo "Generating docs for $$module"; \
+			cd $$module && terraform-docs -c .terraform-docs.yml . && cd ..; \
+		fi; \
+	done
 
 .PHONY: test_documentation
 test_documentation:
 	terraform-docs -c .terraform-docs.yml --output-check .
+	@for module in $(MODULES); do \
+		if [ -f $$module/.terraform-docs.yml ]; then \
+			echo "Checking docs for $$module"; \
+			cd $$module && terraform-docs -c .terraform-docs.yml --output-check . && cd ..; \
+		fi; \
+	done
 
 
 #
@@ -101,11 +116,19 @@ test_documentation:
 fix_tflint:
 	tflint --init
 	tflint --fix
+	@for module in $(MODULES); do \
+		echo "Fixing lint in $$module"; \
+		cd $$module && tflint --init && tflint --fix && cd ..; \
+	done
 
 .PHONY: test_tflint
 test_tflint:
 	tflint --init
 	tflint
+	@for module in $(MODULES); do \
+		echo "Linting $$module"; \
+		cd $$module && tflint --init && tflint && cd ..; \
+	done
 
 
 #
@@ -170,6 +193,10 @@ terraform_test: $(TERRAFORM_EXAMPLES)
 .PHONY: test_validation
 test_validation: .terraform
 	$(TF_BINARY) validate
+	@for module in $(MODULES); do \
+		echo "Validating $$module"; \
+		cd $$module && $(TF_BINARY) init -backend=false && $(TF_BINARY) validate && cd ..; \
+	done
 
 
 #
