@@ -253,7 +253,7 @@ module "ecs_service_fleet" {
   container_definitions = jsonencode(
     concat([
       {
-        name        = "fleet"
+        name        = "fleet-${var.environment}"
         image       = var.fleet_config.image
         cpu         = var.fleet_config.cpu
         memory      = var.fleet_config.mem
