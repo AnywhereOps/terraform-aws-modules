@@ -1,11 +1,13 @@
 output "rds" {
   description = "Aurora RDS cluster outputs"
   value       = module.rds
+  sensitive   = true
 }
 
 output "redis" {
   description = "ElastiCache Redis outputs"
   value       = module.redis
+  sensitive   = true
 }
 
 output "rds_security_group_id" {
