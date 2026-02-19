@@ -100,3 +100,44 @@ No requirements.
 
 No outputs.
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+No requirements.
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+
+## Modules
+
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_cluster"></a> [cluster](#module\_cluster) | terraform-aws-modules/ecs/aws | 4.1.2 |
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_default_tags.provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/default_tags) | data source |
+| [aws_partition.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/partition) | data source |
+| [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment (e.g., prod, sandbox) | `string` | n/a | yes |
+| <a name="input_ecs_cluster"></a> [ecs\_cluster](#input\_ecs\_cluster) | The config for the terraform-aws-modules/ecs/aws module | <pre>object({<br/>    autoscaling_capacity_providers = optional(any, {})<br/>    cluster_configuration = optional(any, {<br/>      execute_command_configuration = {<br/>        logging = "OVERRIDE"<br/>        log_configuration = {<br/>          cloud_watch_log_group_name = "/aws/ecs/infra"<br/>        }<br/>      }<br/>    })<br/>    cluster_name = optional(string, "infra")<br/>    cluster_settings = optional(map(string), {<br/>      "name" : "containerInsights",<br/>      "value" : "enabled",<br/>    })<br/>    create                                = optional(bool, true)<br/>    default_capacity_provider_use_fargate = optional(bool, true)<br/>    fargate_capacity_providers = optional(any, {<br/>      FARGATE = {<br/>        default_capacity_provider_strategy = {<br/>          weight = 100<br/>        }<br/>      }<br/>      FARGATE_SPOT = {<br/>        default_capacity_provider_strategy = {<br/>          weight = 0<br/>        }<br/>      }<br/>    })<br/>    tags = optional(map(string))<br/>  })</pre> | <pre>{<br/>  "autoscaling_capacity_providers": {},<br/>  "cluster_configuration": {<br/>    "execute_command_configuration": {<br/>      "log_configuration": {<br/>        "cloud_watch_log_group_name": "/aws/ecs/infra"<br/>      },<br/>      "logging": "OVERRIDE"<br/>    }<br/>  },<br/>  "cluster_settings": {<br/>    "name": "containerInsights",<br/>    "value": "enabled"<br/>  },<br/>  "create": true,<br/>  "default_capacity_provider_use_fargate": true,<br/>  "fargate_capacity_providers": {<br/>    "FARGATE": {<br/>      "default_capacity_provider_strategy": {<br/>        "weight": 100<br/>      }<br/>    },<br/>    "FARGATE_SPOT": {<br/>      "default_capacity_provider_strategy": {<br/>        "weight": 0<br/>      }<br/>    }<br/>  },<br/>  "tags": {}<br/>}</pre> | no |
+| <a name="input_name"></a> [name](#input\_name) | Name for the ECS cluster | `string` | `"infra"` | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_cluster"></a> [cluster](#output\_cluster) | n/a |
+<!-- END_TF_DOCS -->
