@@ -11,6 +11,7 @@ module "logs" {
   version = "~> 18.0.0"
 
   default_allow = false
+  allow_alb     = true
   allow_config  = true
 
   s3_bucket_name = var.logging_bucket
