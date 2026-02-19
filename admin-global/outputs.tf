@@ -7,3 +7,8 @@ output "route53_zones" {
     }
   } : {}
 }
+
+output "logs_bucket" {
+  description = "S3 bucket name for AWS logs (ALB, etc.)"
+  value       = module.logs.aws_logs_bucket
+}
