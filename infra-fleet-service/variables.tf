@@ -104,18 +104,6 @@ variable "final_snapshot_identifier" {
   default     = ""
 }
 
-variable "pg_family" {
-  description = "DB parameter family for RDS instance"
-  type        = string
-  default     = "postgres12"
-}
-
-variable "pg_version" {
-  description = "PostgreSQL version for the RDS instance"
-  type        = string
-  default     = "12.2"
-}
-
 variable "tasks_desired_count" {
   description = "Number of ECS tasks to run"
   type        = number
