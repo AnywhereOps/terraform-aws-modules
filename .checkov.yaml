@@ -11,3 +11,5 @@ skip-check:
   - CKV2_AWS_57
   # Using Terraform Registry with version constraints (commit hash impractical)
   - CKV_TF_1
+  # Secrets Manager uses AWS-managed encryption by default
+  - CKV_AWS_149

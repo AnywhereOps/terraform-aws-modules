@@ -5,3 +5,5 @@ AWS-0017
 AWS-0066
 # S3 versioning configured by upstream module variable
 AWS-0090
+# Logging bucket itself doesn't need logging (recursive)
+AWS-0089
