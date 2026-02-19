@@ -101,9 +101,11 @@ documentation:
 test_documentation:
 	terraform-docs -c .terraform-docs.yml --output-check .
 	@for module in $(MODULES); do \
+		echo "Checking docs for $$module"; \
 		if [ -f $$module/.terraform-docs.yml ]; then \
-			echo "Checking docs for $$module"; \
 			(cd $$module && terraform-docs -c .terraform-docs.yml --output-check .); \
+		else \
+			terraform-docs -c .terraform-docs.yml --output-check $$module; \
 		fi; \
 	done
 
