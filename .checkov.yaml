@@ -9,3 +9,5 @@ skip-check:
   - CKV2_AWS_5
   # Server private keys don't rotate automatically
   - CKV2_AWS_57
+  # Using Terraform Registry with version constraints (commit hash impractical)
+  - CKV_TF_1

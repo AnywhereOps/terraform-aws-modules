@@ -3,3 +3,5 @@
 AWS-0017
 # Lambda without X-Ray tracing (optional observability feature)
 AWS-0066
+# S3 versioning configured by upstream module variable
+AWS-0090
