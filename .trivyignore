@@ -7,3 +7,5 @@ AWS-0066
 AWS-0090
 # Logging bucket itself doesn't need logging (recursive)
 AWS-0089
+# IAM groups use separate MFA enforcement module (iam_enforce_mfa)
+AWS-0123

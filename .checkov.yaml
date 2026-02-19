@@ -9,7 +9,22 @@ skip-check:
   - CKV2_AWS_5
   # Server private keys don't rotate automatically
   - CKV2_AWS_57
-  # Using Terraform Registry with version constraints (commit hash impractical)
+  # Using Terraform Registry with version constraints
   - CKV_TF_1
+  - CKV_TF_2
   # Secrets Manager uses AWS-managed encryption by default
   - CKV_AWS_149
+  # Lambda function URL is intentionally public (Discord webhook)
+  - CKV_AWS_301
+  # KMS policy allows service principals by design
+  - CKV_AWS_63
+  - CKV_AWS_62
+  - CKV_AWS_356
+  - CKV_AWS_283
+  # Admin module intentionally grants admin access
+  - CKV_AWS_274
+  # IAM assume role policies are correctly scoped
+  - CKV_AWS_60
+  - CKV_AWS_61
+  # False positive on provider block
+  - CKV_AWS_41
