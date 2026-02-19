@@ -1,0 +1,11 @@
+soft-fail: false
+framework:
+  - terraform
+
+skip-check:
+  # False positive: EIP is attached to NAT Gateway, not EC2
+  - CKV2_AWS_19
+  # False positive: Security group is attached via module reference
+  - CKV2_AWS_5
+  # Server private keys don't rotate automatically
+  - CKV2_AWS_57

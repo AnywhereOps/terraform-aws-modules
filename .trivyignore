@@ -1,0 +1,5 @@
+# Low severity issues in upstream modules
+# CloudWatch log groups without KMS (trussworks modules use default encryption)
+AWS-0017
+# Lambda without X-Ray tracing (optional observability feature)
+AWS-0066
