@@ -66,7 +66,7 @@ module "vpc" {
   one_nat_gateway_per_az                = !var.vpc.single_nat_gateway # Derived: HA when not single
   enable_nat_gateway                    = var.vpc.enable_nat_gateway
   reuse_nat_ips                         = true
-  external_nat_ips                      = aws_eip.nat[*].id
+  external_nat_ip_ids                   = aws_eip.nat[*].id
   enable_dns_hostnames                  = var.vpc.enable_dns_hostnames
   enable_dns_support                    = var.vpc.enable_dns_support
 }
