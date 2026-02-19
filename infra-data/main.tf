@@ -335,7 +335,7 @@ data "aws_sns_topic" "alerts" {
 # * Cloudwatch alarms for running out of burstable CPU credits and storage space
 # TODO: Pin to commit SHA for production: ?ref=<commit-sha>
 module "rds_alarms" {
-  source = "github.com/anywhereops/terraform-aws-rds-aurora-cloudwatch-alarms?ref=0.1.0"
+  source = "github.com/anywhereops/terraform-aws-rds-aurora-cloudwatch-alarms?ref=main"
 
   db_cluster_identifier = module.rds.cluster_id
   alarm_actions         = [data.aws_sns_topic.alerts.arn] # Uses ARN
