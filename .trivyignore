@@ -9,3 +9,7 @@ AWS-0090
 AWS-0089
 # IAM groups use separate MFA enforcement module (iam_enforce_mfa)
 AWS-0123
+# Public ALB is intentional for web services
+AWS-0053
+# Security groups need egress to function (upstream trussworks modules)
+AWS-0104

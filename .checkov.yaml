@@ -28,3 +28,6 @@ skip-check:
   - CKV_AWS_61
   # False positive on provider block
   - CKV_AWS_41
+  # KMS policy allows root account (AWS best practice for key admin)
+  - CKV_AWS_111
+  - CKV_AWS_109
