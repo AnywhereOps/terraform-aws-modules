@@ -72,6 +72,7 @@ module "alb_fleet" {
   name           = "fleet"
   environment    = var.environment
   logs_s3_bucket = var.alb_logs_bucket
+  logs_s3_prefix = "alb"
 
   # The SSL policy here describes which protocols and ciphers can be used
   # to connect to the ALB. You can see a full description of these policies
