@@ -73,7 +73,7 @@ module "vpc" {
 
 module "vpc_flow_logs" {
   source  = "trussworks/vpc-flow-logs/aws"
-  version = "~> 3.0.0"
+  version = "~> 2.0"
 
   vpc_name       = var.vpc.name
   vpc_id         = module.vpc.vpc_id
