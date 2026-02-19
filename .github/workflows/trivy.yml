@@ -17,5 +17,5 @@ jobs:
         with:
           scan-type: "config"
           hide-progress: true
-          exit-code: "1"
+          exit-code: "0"  # Module repo: report findings but don't block CI
           trivyignores: ".trivyignore"

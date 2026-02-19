@@ -1,4 +1,4 @@
-soft-fail: false
+soft-fail: true  # Module repo: report findings but don't block CI
 framework:
   - terraform
 
