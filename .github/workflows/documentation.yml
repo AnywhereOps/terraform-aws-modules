@@ -20,6 +20,9 @@ jobs:
           tar -xzf terraform-docs.tar.gz
           chmod +x terraform-docs
           sudo mv terraform-docs /usr/local/bin/
+          terraform-docs --version
 
-      - name: Run Terraform-Docs
-        run: make test_documentation
+      - name: Generate docs and check for changes
+        run: |
+          make documentation
+          git diff --exit-code || (echo "Documentation is out of date. Run 'make documentation' locally and commit." && exit 1)

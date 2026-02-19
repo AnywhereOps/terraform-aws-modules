@@ -91,9 +91,11 @@ test_formatting:
 documentation:
 	terraform-docs -c .terraform-docs.yml .
 	@for module in $(MODULES); do \
+		echo "Generating docs for $$module"; \
 		if [ -f $$module/.terraform-docs.yml ]; then \
-			echo "Generating docs for $$module"; \
 			(cd $$module && terraform-docs -c .terraform-docs.yml .); \
+		else \
+			terraform-docs -c .terraform-docs.yml $$module; \
 		fi; \
 	done
 
