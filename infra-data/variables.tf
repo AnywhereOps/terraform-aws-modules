@@ -36,7 +36,7 @@ variable "ecs_security_group_ids" {
 variable "rds_config" {
   type = object({
     name           = optional(string, "infra")
-    engine_version = optional(string, "8.0.mysql_aurora.3.07.1")
+    engine_version = optional(string, "8.0.mysql_aurora.3.08.2")
     instance_class = optional(string, "db.t4g.large")
     # Networking comes from vpc_config.subnets.database
     allowed_security_groups         = optional(list(string), [])
@@ -90,7 +90,7 @@ variable "rds_config" {
   })
   default = {
     name                            = "infra"
-    engine_version                  = "8.0.mysql_aurora.3.07.1"
+    engine_version                  = "8.0.mysql_aurora.3.08.2"
     instance_class                  = "db.t4g.large"
     allowed_security_groups         = []
     allowed_cidr_blocks             = []
