@@ -1,9 +1,3 @@
-data "aws_caller_identity" "current" {}
-
-locals {
-  secret_name = var.secret_name != "" ? var.secret_name : "${var.name_prefix}-cdn-signing"
-}
-
 # -----------------------------------------------------------------------------
 # S3 bucket via trussworks/s3-private-bucket
 #
@@ -17,10 +11,10 @@ module "packages" {
   version = "~> 9.0"
 
   bucket                      = var.bucket_name
-  use_account_alias_prefix    = var.use_account_alias_prefix
-  logging_bucket              = var.logging_bucket
-  versioning_status           = var.versioning_status
-  enable_bucket_force_destroy = var.force_destroy
+  use_account_alias_prefix    = false
+  logging_bucket              = ""
+  versioning_status           = "Enabled"
+  enable_bucket_force_destroy = false
 
   # Inject CloudFront OAC access into the bucket policy.
   # The trussworks module merges this with its default TLS enforcement policy.
@@ -53,19 +47,52 @@ data "aws_iam_policy_document" "cloudfront_oac" {
 }
 
 # -----------------------------------------------------------------------------
-# CloudFront signing keypair
+# CloudFront signing key group
+#
+# The public key and private key are created by bin/generate-signing-key.sh
+# which stores the private key in Secrets Manager (never enters Terraform state).
+# Terraform only references the public key ID to build the key group.
 # -----------------------------------------------------------------------------
-
-resource "aws_cloudfront_public_key" "signing" {
-  comment     = "${var.name_prefix} signed URL public key"
-  encoded_key = var.public_key
-  name        = "${var.name_prefix}-signing-key"
-}
 
 resource "aws_cloudfront_key_group" "signing" {
   comment = "${var.name_prefix} signed URL key group"
-  items   = [aws_cloudfront_public_key.signing.id]
+  items   = [var.cloudfront_public_key_id]
   name    = "${var.name_prefix}-signing-group"
+}
+
+# -----------------------------------------------------------------------------
+# ACM certificate (us-east-1, required by CloudFront)
+# -----------------------------------------------------------------------------
+
+module "acm" {
+  count   = var.domain_name != "" ? 1 : 0
+  source  = "terraform-aws-modules/acm/aws"
+  version = "~> 5.0"
+
+  providers = {
+    aws = aws.us-east-1
+  }
+
+  domain_name         = var.domain_name
+  zone_id             = var.route53_zone_id
+  validation_method   = "DNS"
+  wait_for_validation = true
+
+  tags = var.tags
+}
+
+# Route53 CNAME pointing domain to CloudFront
+resource "aws_route53_record" "cdn" {
+  count   = var.domain_name != "" ? 1 : 0
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = module.cdn.cloudfront_distribution_domain_name
+    zone_id                = module.cdn.cloudfront_distribution_hosted_zone_id
+    evaluate_target_health = false
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -82,7 +109,7 @@ module "cdn" {
   price_class         = var.price_class
   retain_on_delete    = false
   wait_for_deployment = false
-  aliases             = var.aliases
+  aliases             = var.domain_name != "" ? [var.domain_name] : []
 
   # OAC for S3 access (v6+, no OAI)
   create_origin_access_control = true
@@ -116,53 +143,21 @@ module "cdn" {
   }
 
   # Custom domain TLS
-  viewer_certificate = length(var.aliases) > 0 ? {
-    acm_certificate_arn      = var.acm_certificate_arn
+  viewer_certificate = var.domain_name != "" ? {
+    acm_certificate_arn      = module.acm[0].acm_certificate_arn
     ssl_support_method       = "sni-only"
-    minimum_protocol_version = var.minimum_protocol_version
+    minimum_protocol_version = "TLSv1.2_2021"
   } : {
     cloudfront_default_certificate = true
-    minimum_protocol_version       = var.minimum_protocol_version
+    minimum_protocol_version       = "TLSv1.2_2021"
   }
 
-  # Logging (optional)
-  logging_config = var.enable_logging && var.logging_config != null ? {
-    bucket = var.logging_config.bucket
-    prefix = var.logging_config.prefix
-  } : {}
+  logging_config = {}
 
-  # Geo restriction
   geo_restriction = {
-    restriction_type = var.geo_restriction_type
-    locations        = var.geo_restriction_locations
+    restriction_type = "none"
+    locations        = []
   }
 
   tags = var.tags
-}
-
-# -----------------------------------------------------------------------------
-# Secrets Manager (optional)
-#
-# Stores the values munkisrv needs in config.yaml:
-#   cloudfront.url
-#   cloudfront.key_id
-#   cloudfront.private_key
-# -----------------------------------------------------------------------------
-
-resource "aws_secretsmanager_secret" "signing" {
-  count = var.create_secret ? 1 : 0
-
-  name = local.secret_name
-  tags = var.tags
-}
-
-resource "aws_secretsmanager_secret_version" "signing" {
-  count = var.create_secret ? 1 : 0
-
-  secret_id = aws_secretsmanager_secret.signing[0].id
-  secret_string = jsonencode({
-    cloudfront_url         = "https://${module.cdn.cloudfront_distribution_domain_name}"
-    cloudfront_key_id      = aws_cloudfront_public_key.signing.id
-    cloudfront_private_key = var.private_key
-  })
 }

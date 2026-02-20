@@ -228,27 +228,13 @@ variable "fleet_config" {
       name = "fleetdm-execution-role"
     })
     software_installers = optional(object({
-      create_bucket                      = optional(bool, true)
-      bucket_name                        = optional(string, null)
-      bucket_prefix                      = optional(string, "fleet-software-installers-")
-      s3_object_prefix                   = optional(string, "")
-      enable_bucket_versioning           = optional(bool, false)
-      expire_noncurrent_versions         = optional(bool, true)
-      noncurrent_version_expiration_days = optional(number, 30)
-      create_kms_key                     = optional(bool, false)
-      kms_alias                          = optional(string, "fleet-software-installers")
-      tags                               = optional(map(string), {})
+      bucket_name      = optional(string, null)
+      bucket_arn       = optional(string, null)
+      s3_object_prefix = optional(string, "")
       }), {
-      create_bucket                      = true
-      bucket_name                        = null
-      bucket_prefix                      = "fleet-software-installers-"
-      s3_object_prefix                   = ""
-      enable_bucket_versioning           = false
-      expire_noncurrent_versions         = true
-      noncurrent_version_expiration_days = 30
-      create_kms_key                     = false
-      kms_alias                          = "fleet-software-installers"
-      tags                               = {}
+      bucket_name      = null
+      bucket_arn       = null
+      s3_object_prefix = ""
     })
   })
   default = {
@@ -323,9 +309,8 @@ variable "fleet_config" {
       }
     }
     software_installers = {
-      create_bucket    = true
       bucket_name      = null
-      bucket_prefix    = "fleet-software-installers-"
+      bucket_arn       = null
       s3_object_prefix = ""
     }
   }

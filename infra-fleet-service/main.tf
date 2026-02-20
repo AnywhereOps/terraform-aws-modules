@@ -457,80 +457,33 @@ resource "aws_iam_role_policy" "fleet_execution_role" {
   policy = data.aws_iam_policy_document.fleet_execution_role.json
 }
 
-# locals {
-#   software_installers_kms_policy = var.fleet_config.software_installers.create_kms_key == true ? [{
-#     sid = "AllowSoftwareInstallersKMSAccess"
-#     actions = [
-#       "kms:ReEncrypt*",
-#       "kms:GenerateDataKey*",
-#       "kms:Encrypt*",
-#       "kms:Describe*",
-#       "kms:Decrypt*"
-#     ]
-#     resources = [aws_kms_key.software_installers[0].arn]
-#     effect    = "Allow"
-#   }] : []
-# }
+# Task role policy - S3 software installers
+# Bucket is created by infra-packages module, ARN passed in via fleet_config.software_installers.bucket_arn
+data "aws_iam_policy_document" "software_installers" {
+  count = var.fleet_config.software_installers.bucket_arn != null ? 1 : 0
 
-# # Task role policy - allows Fleet to publish CloudWatch metrics at runtime
-# resource "aws_iam_role_policy" "fleet_task_cloudwatch" {
-#   name = "fleet-cloudwatch-metrics"
-#   role = module.ecs_service_fleet.task_role_name
+  statement {
+    actions = [
+      "s3:GetObject*",
+      "s3:PutObject*",
+      "s3:ListBucket*",
+      "s3:DeleteObject",
+      "s3:CreateMultipartUpload",
+      "s3:AbortMultipartUpload",
+      "s3:ListMultipartUploadParts",
+      "s3:GetBucketLocation"
+    ]
+    resources = [
+      var.fleet_config.software_installers.bucket_arn,
+      "${var.fleet_config.software_installers.bucket_arn}/*"
+    ]
+  }
+}
 
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Effect   = "Allow"
-#       Action   = ["cloudwatch:PutMetricData"]
-#       Resource = ["*"]
-#     }]
-#   })
-# }
+resource "aws_iam_role_policy" "software_installers" {
+  count = var.fleet_config.software_installers.bucket_arn != null ? 1 : 0
 
-# # Task role policy - S3 software installers (TODO: uncomment when shared S3 module is ready)
-# data "aws_iam_policy_document" "software_installers" {
-#   count = var.fleet_config.software_installers.create_bucket == true ? 1 : 0
-#   statement {
-#     actions = [
-#       "s3:GetObject*",
-#       "s3:PutObject*",
-#       "s3:ListBucket*",
-#       "s3:ListMultipartUploadParts*",
-#       "s3:DeleteObject",
-#       "s3:CreateMultipartUpload",
-#       "s3:AbortMultipartUpload",
-#       "s3:ListMultipartUploadParts",
-#       "s3:GetBucketLocation"
-#     ]
-#     resources = [aws_s3_bucket.software_installers[0].arn, "${aws_s3_bucket.software_installers[0].arn}/*"]
-#   }
-#   dynamic "statement" {
-#     for_each = local.software_installers_kms_policy
-#     content {
-#       sid       = try(statement.value.sid, "")
-#       actions   = try(statement.value.actions, [])
-#       resources = try(statement.value.resources, [])
-#       effect    = try(statement.value.effect, null)
-#       dynamic "principals" {
-#         for_each = try(statement.value.principals, [])
-#         content {
-#           type        = principals.value.type
-#           identifiers = principals.value.identifiers
-#         }
-#       }
-#       dynamic "condition" {
-#         for_each = try(statement.value.conditions, [])
-#         content {
-#           test     = condition.value.test
-#           variable = condition.value.variable
-#           values   = condition.value.values
-#         }
-#       }
-#     }
-#   }
-# }
-
-# resource "aws_iam_policy" "software_installers" {
-#   count  = var.fleet_config.software_installers.create_bucket == true ? 1 : 0
-#   policy = data.aws_iam_policy_document.software_installers[count.index].json
-# }
+  name   = "fleet-software-installers-s3"
+  role   = module.ecs_service_fleet.task_role_name
+  policy = data.aws_iam_policy_document.software_installers[0].json
+}

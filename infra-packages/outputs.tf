@@ -37,17 +37,8 @@ output "cloudfront_distribution_domain_name" {
 }
 
 output "cloudfront_url" {
-  description = "Full HTTPS URL of the CloudFront distribution. Use in munkisrv config.yaml."
-  value       = "https://${module.cdn.cloudfront_distribution_domain_name}"
-}
-
-# -----------------------------------------------------------------------------
-# Signing
-# -----------------------------------------------------------------------------
-
-output "cloudfront_key_id" {
-  description = "CloudFront public key ID. Use in munkisrv config.yaml as key_id."
-  value       = aws_cloudfront_public_key.signing.id
+  description = "Full HTTPS URL (custom domain if set, otherwise CF default)."
+  value       = var.domain_name != "" ? "https://${var.domain_name}" : "https://${module.cdn.cloudfront_distribution_domain_name}"
 }
 
 output "cloudfront_key_group_id" {
@@ -56,23 +47,10 @@ output "cloudfront_key_group_id" {
 }
 
 # -----------------------------------------------------------------------------
-# Secrets Manager
+# Signing (managed by bin/generate-signing-key.sh)
 # -----------------------------------------------------------------------------
 
-output "secret_arn" {
-  description = "ARN of the Secrets Manager secret containing signing config."
-  value       = var.create_secret ? aws_secretsmanager_secret.signing[0].arn : null
-}
-
-# -----------------------------------------------------------------------------
-# Convenience: munkisrv config.yaml values
-# -----------------------------------------------------------------------------
-
-output "munkisrv_config" {
-  description = "Map of values for munkisrv config.yaml cloudfront section."
-  value = {
-    url        = "https://${module.cdn.cloudfront_distribution_domain_name}"
-    key_id     = aws_cloudfront_public_key.signing.id
-    private_key = "RETRIEVE_FROM_SECRETS_MANAGER"
-  }
+output "signing_secret_arn" {
+  description = "ARN of the Secrets Manager secret containing the signing private key."
+  value       = var.signing_secret_arn
 }
