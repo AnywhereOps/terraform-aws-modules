@@ -8,16 +8,24 @@ data "aws_caller_identity" "current" {}
 
 data "aws_partition" "current" {}
 
+data "aws_secretsmanager_secret" "fleet_license" {
+  name = "fleet-license"
+}
+
 # Fleet container definition - copied from byo-ecs/main.tf:1-22, 65-161
 locals {
   environment = [for k, v in var.fleet_config.extra_environment_variables : {
     name  = k
     value = v
   }]
-  secrets = [for k, v in var.fleet_config.extra_secrets : {
+  license_secret = [{
+    name      = "FLEET_LICENSE_KEY"
+    valueFrom = data.aws_secretsmanager_secret.fleet_license.arn
+  }]
+  secrets = concat(local.license_secret, [for k, v in var.fleet_config.extra_secrets : {
     name      = k
     valueFrom = v
-  }]
+  }])
   repository_credentials = var.fleet_config.repository_credentials != "" ? {
     credentialsParameter = var.fleet_config.repository_credentials
   } : null
