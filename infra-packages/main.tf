@@ -111,8 +111,7 @@ module "cdn" {
   wait_for_deployment = false
   aliases             = var.domain_name != "" ? [var.domain_name] : []
 
-  # OAC for S3 access (v6+, no OAI)
-  create_origin_access_control = true
+  # OAC for S3 access
   origin_access_control = {
     s3_oac = {
       description      = "${var.name_prefix} S3 access"
@@ -154,9 +153,10 @@ module "cdn" {
 
   logging_config = {}
 
-  geo_restriction = {
-    restriction_type = "none"
-    locations        = []
+  restrictions = {
+    geo_restriction = {
+      restriction_type = "none"
+    }
   }
 
   tags = var.tags
