@@ -5,7 +5,7 @@ locals {
 
 resource "aws_ecr_repository" "main" {
   name = var.name
-  tags = merge(local.tags, var.tags)
+  tags = merge(var.tags)
 }
 
 resource "aws_ecr_lifecycle_policy" "main" {
