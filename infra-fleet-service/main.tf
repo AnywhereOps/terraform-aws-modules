@@ -267,6 +267,7 @@ module "ecs_service_fleet" {
         dependsOn   = var.fleet_config.depends_on
         volumesFrom = []
         essential   = true
+        command     = ["sh", "-c", "fleet prepare db --no-prompt && fleet serve"]
         portMappings = [
           {
             # This port is the same that the contained application also uses
