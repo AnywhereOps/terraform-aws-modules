@@ -1,11 +1,9 @@
-output "route53_zones" {
-  description = "Map of domain -> zone details (only when core_infra = true)"
+output "route53_zone" {
+  description = "Zone details for the domain (only when core_infra = true)"
   value = var.core_infra ? {
-    for domain, zone in aws_route53_zone.zones : domain => {
-      zone_id      = zone.zone_id
-      name_servers = zone.name_servers
-    }
-  } : {}
+    zone_id      = aws_route53_zone.zone[0].zone_id
+    name_servers = aws_route53_zone.zone[0].name_servers
+  } : null
 }
 
 output "logs_bucket" {

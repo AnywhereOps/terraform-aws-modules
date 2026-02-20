@@ -38,10 +38,10 @@ variable "region" {
   default     = "us-east-2"
 }
 
-variable "domains" {
-  description = "List of domain names to create Route53 zones for (only when core_infra = true)"
-  type        = list(string)
-  default     = ["anywhereops.ai", "fleet.anywhereops.ai", "munki.anywhereops.ai"]
+variable "domain" {
+  description = "Domain name to create Route53 zone for (only when core_infra = true)"
+  type        = string
+  default     = "anywhereops.ai"
 }
 
 variable "core_infra" {
