@@ -421,19 +421,12 @@ resource "aws_iam_role_policy" "fleet_task_role" {
 
 # Execution role policy - allows ECS to pull secrets before container starts
 data "aws_iam_policy_document" "fleet_execution_role" {
-  # Allow fetching Fleet server private key
   statement {
     actions = ["secretsmanager:GetSecretValue"]
     resources = [
-      aws_secretsmanager_secret.fleet_server_private_key.arn
-    ]
-  }
-
-  # Allow fetching database password
-  statement {
-    actions = ["secretsmanager:GetSecretValue"]
-    resources = [
-      var.fleet_config.database.password_secret_arn
+      aws_secretsmanager_secret.fleet_server_private_key.arn,
+      var.fleet_config.database.password_secret_arn,
+      data.aws_secretsmanager_secret.fleet_license.arn,
     ]
   }
 }
