@@ -223,8 +223,9 @@ module "ecs_service_fleet" {
   source  = "trussworks/ecs-service/aws"
   version = "~> 8.0.0"
 
-  name        = "fleet"
-  environment = var.environment
+  name                  = "fleet"
+  environment           = var.environment
+  target_container_name = "fleet"
 
   logs_cloudwatch_retention = var.cloudwatch_logs_retention_days
   logs_cloudwatch_group     = format("ecs-tasks-fleet-%s", var.environment)
