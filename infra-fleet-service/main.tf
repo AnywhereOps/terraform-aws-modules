@@ -295,11 +295,11 @@ module "ecs_service_fleet" {
         secrets = concat([
           {
             name      = "FLEET_MYSQL_PASSWORD"
-            valueFrom = var.fleet_config.database.password_secret_arn
+            valueFrom = "${var.fleet_config.database.password_secret_arn}:password::"
           },
           {
             name      = "FLEET_MYSQL_READ_REPLICA_PASSWORD"
-            valueFrom = var.fleet_config.database.password_secret_arn
+            valueFrom = "${var.fleet_config.database.password_secret_arn}:password::"
           },
           {
             name      = "FLEET_SERVER_PRIVATE_KEY"
