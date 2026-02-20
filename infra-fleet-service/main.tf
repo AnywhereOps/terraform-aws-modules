@@ -208,6 +208,26 @@ resource "aws_secretsmanager_secret_version" "fleet_server_private_key" {
   secret_string = random_password.fleet_server_private_key.result
 }
 
+data "aws_secretsmanager_secret" "cross_account" {
+  for_each = var.cross_account_secret_policies
+  name     = each.key
+}
+
+resource "aws_secretsmanager_secret_policy" "cross_account" {
+  for_each   = var.cross_account_secret_policies
+  secret_arn = data.aws_secretsmanager_secret.cross_account[each.key].arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCrossAccountAccess"
+      Effect    = "Allow"
+      Principal = { AWS = each.value }
+      Action    = "secretsmanager:GetSecretValue"
+      Resource  = "*"
+    }]
+  })
+}
+
 # Reference the shared ECS cluster from stacks/ecs-cluster
 # Fleet uses the public Docker Hub image (fleetdm/fleet), so no ECR needed
 data "aws_ecs_cluster" "main" {

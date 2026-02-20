@@ -129,6 +129,12 @@ variable "cloudwatch_logs_retention_days" {
 # Fleet configuration - copied from byo-ecs/variables.tf
 # Removed: networking, loadbalancer, iam, autoscaling (handled by Trussworks or separate resources)
 # Removed: software_installers (out of scope)
+variable "cross_account_secret_policies" {
+  description = "Map of secret names to cross-account role ARNs allowed to read them via resource policy."
+  type        = map(string)
+  default     = {}
+}
+
 variable "fleet_config" {
   type = object({
     task_mem                     = optional(number, null)
