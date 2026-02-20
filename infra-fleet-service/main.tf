@@ -53,6 +53,11 @@ resource "aws_route53_record" "fleet_acm_validation" {
   ttl     = 60
 }
 
+resource "aws_acm_certificate_validation" "fleet" {
+  certificate_arn         = aws_acm_certificate.fleet.arn
+  validation_record_fqdns = [for record in aws_route53_record.fleet_acm_validation : record.fqdn]
+}
+
 # Every application that we want to expose to the internet somehow
 # is going to need some sort of load balancer. This lets us abstract
 # the interface between the user and the containers running the actual
@@ -79,7 +84,7 @@ module "alb_fleet" {
   # here:
   # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html#describe-ssl-policies
   alb_ssl_policy              = "ELBSecurityPolicy-TLS-1-2-2017-01"
-  alb_default_certificate_arn = aws_acm_certificate.fleet.arn
+  alb_default_certificate_arn = aws_acm_certificate_validation.fleet.certificate_arn
   alb_certificate_arns        = []
   alb_vpc_id                  = var.vpc_id
   alb_subnet_ids              = var.alb_subnets
@@ -253,7 +258,7 @@ module "ecs_service_fleet" {
   container_definitions = jsonencode(
     concat([
       {
-        name        = "fleet-${var.environment}"
+        name        = "fleet"
         image       = var.fleet_config.image
         cpu         = var.fleet_config.cpu
         memory      = var.fleet_config.mem
