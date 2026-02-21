@@ -28,3 +28,8 @@ output "alb_listener_arn" {
   description = "ARN of the HTTPS listener (used for adding listener rules)"
   value       = module.alb_fleet.alb_listener_arn
 }
+
+output "cross_account_kms_key_arn" {
+  description = "ARN of the KMS key for cross-account secret access"
+  value       = length(aws_kms_key.cross_account_secrets) > 0 ? aws_kms_key.cross_account_secrets[0].arn : null
+}
