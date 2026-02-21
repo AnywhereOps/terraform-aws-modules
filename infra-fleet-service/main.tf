@@ -208,52 +208,6 @@ resource "aws_secretsmanager_secret_version" "fleet_server_private_key" {
   secret_string = random_password.fleet_server_private_key.result
 }
 
-# KMS key for cross-account secret access
-# Cross-account secret access requires a CMK (not the default key)
-resource "aws_kms_key" "cross_account_secrets" {
-  count                   = length(var.cross_account_secret_policies) > 0 ? 1 : 0
-  description             = "KMS key for cross-account Secrets Manager access"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "Enable IAM User Permissions"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      },
-      {
-        Sid    = "Allow cross-account decrypt"
-        Effect = "Allow"
-        Principal = {
-          AWS = values(var.cross_account_secret_policies)
-        }
-        Action = [
-          "kms:Decrypt",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-
-  tags = {
-    Name = "cross-account-secrets"
-  }
-}
-
-resource "aws_kms_alias" "cross_account_secrets" {
-  count         = length(var.cross_account_secret_policies) > 0 ? 1 : 0
-  name          = "alias/cross-account-secrets"
-  target_key_id = aws_kms_key.cross_account_secrets[0].key_id
-}
-
 data "aws_secretsmanager_secret" "cross_account" {
   for_each = var.cross_account_secret_policies
   name     = each.key
