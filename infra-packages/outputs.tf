@@ -46,6 +46,11 @@ output "cloudfront_key_group_id" {
   value       = aws_cloudfront_key_group.signing.id
 }
 
+output "cloudfront_public_key_id" {
+  description = "CloudFront public key ID (for munkisrv signed URL generation)."
+  value       = var.cloudfront_public_key_id
+}
+
 # -----------------------------------------------------------------------------
 # Signing (managed by bin/generate-signing-key.sh)
 # -----------------------------------------------------------------------------
