@@ -317,3 +317,19 @@ variable "fleet_config" {
   description = "The configuration object for Fleet itself. Fields that default to null will have their respective resources created if not specified."
   nullable    = false
 }
+
+# -----------------------------------------------------------------------------
+# Fleet Enroll Secrets
+# -----------------------------------------------------------------------------
+
+variable "fetch_enroll_secrets" {
+  description = "Whether to fetch enroll secrets from Fleet API and store in Secrets Manager"
+  type        = bool
+  default     = false
+}
+
+variable "fleet_api_key_secret_name" {
+  description = "Name of the Secrets Manager secret containing the Fleet API key (required if fetch_enroll_secrets is true)"
+  type        = string
+  default     = "fleet-api-key"
+}
