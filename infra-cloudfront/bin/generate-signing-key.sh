@@ -9,27 +9,40 @@
 # unless --force is passed.
 #
 # Usage:
-#   generate-signing-key.sh [--name-prefix NAME] [--region REGION] [--ttl-days DAYS] [--force]
+#   generate-signing-key.sh [--name NAME] [--region REGION] [--ttl-days DAYS] [--force]
+#
+# Example:
+#   ./generate-signing-key.sh --name packages-prod --region us-east-2
 #
 set -euo pipefail
 
-NAME_PREFIX="packages"
+NAME="cloudfront"
 REGION="${AWS_REGION:-us-east-2}"
 TTL_DAYS=365
 FORCE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --name-prefix) NAME_PREFIX="$2"; shift 2 ;;
-    --region)      REGION="$2"; shift 2 ;;
-    --ttl-days)    TTL_DAYS="$2"; shift 2 ;;
-    --force)       FORCE=true; shift ;;
-    *)             echo "Unknown arg: $1" >&2; exit 1 ;;
+    --name)      NAME="$2"; shift 2 ;;
+    --region)    REGION="$2"; shift 2 ;;
+    --ttl-days)  TTL_DAYS="$2"; shift 2 ;;
+    --force)     FORCE=true; shift ;;
+    -h|--help)
+      echo "Usage: $0 [--name NAME] [--region REGION] [--ttl-days DAYS] [--force]"
+      echo ""
+      echo "Options:"
+      echo "  --name       Name prefix for resources (default: cloudfront)"
+      echo "  --region     AWS region (default: \$AWS_REGION or us-east-2)"
+      echo "  --ttl-days   Key validity in days (default: 365)"
+      echo "  --force      Regenerate even if existing key is valid"
+      exit 0
+      ;;
+    *)           echo "Unknown arg: $1" >&2; exit 1 ;;
   esac
 done
 
-SECRET_NAME="${NAME_PREFIX}-cdn-signing"
-CF_KEY_NAME="${NAME_PREFIX}-signing-key"
+SECRET_NAME="${NAME}-cdn-signing"
+CF_KEY_NAME="${NAME}-signing-key"
 now_epoch=$(date +%s)
 
 # ---------------------------------------------------------------------------
@@ -97,20 +110,13 @@ public_key=$(cat "$tmpdir/public.pem")
 # ---------------------------------------------------------------------------
 # Create CloudFront public key
 # ---------------------------------------------------------------------------
-
-# Delete old CF public key if it exists (must not be in a key group)
-old_key_id=$(aws cloudfront list-public-keys \
-  --region "$REGION" \
-  --query "PublicKeyList.Items[?Comment=='${NAME_PREFIX} signed URL public key'].Id" \
-  --output text 2>/dev/null || echo "")
-
 cf_result=$(aws cloudfront create-public-key \
   --region "$REGION" \
   --public-key-config "{
-    \"CallerReference\": \"${NAME_PREFIX}-$(date +%s)\",
+    \"CallerReference\": \"${NAME}-$(date +%s)\",
     \"Name\": \"${CF_KEY_NAME}\",
     \"EncodedKey\": $(python3 -c "import json; print(json.dumps(open('$tmpdir/public.pem').read()))"),
-    \"Comment\": \"${NAME_PREFIX} signed URL public key\"
+    \"Comment\": \"${NAME} signed URL public key\"
   }" \
   --output json)
 
@@ -156,5 +162,6 @@ secret_arn=$(aws secretsmanager describe-secret \
 
 echo "Keypair valid until $expires_at." >&2
 echo ""
+echo "# Add these to your terragrunt.hcl inputs:"
 echo "CLOUDFRONT_PUBLIC_KEY_ID=$cf_public_key_id"
 echo "SECRET_ARN=$secret_arn"

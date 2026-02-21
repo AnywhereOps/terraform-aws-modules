@@ -1,40 +1,45 @@
-# These data sources provide information about the environment this
-# terraform is running in -- it's how we can know which account, region,
-# and partition (ie, commercial AWS vs GovCloud) we're in.
+# =============================================================================
+# Fleet Service Module
+# Creates ALB, ECS service, task definition, IAM roles, and supporting infra
+# =============================================================================
 
 data "aws_region" "current" {}
-
 data "aws_caller_identity" "current" {}
-
 data "aws_partition" "current" {}
 
 data "aws_secretsmanager_secret" "fleet_license" {
   name = "fleet-license"
 }
 
-# Fleet container definition - copied from byo-ecs/main.tf:1-22, 65-161
+# =============================================================================
+# Locals
+# =============================================================================
+
 locals {
+  # Environment variables for container
   environment = [for k, v in var.fleet_config.extra_environment_variables : {
     name  = k
     value = v
   }]
-  license_secret = [{
-    name      = "FLEET_LICENSE_KEY"
-    valueFrom = data.aws_secretsmanager_secret.fleet_license.arn
-  }]
-  secrets = concat(local.license_secret, [for k, v in var.fleet_config.extra_secrets : {
+
+  # Secrets including license
+  secrets = [for k, v in merge(
+    { "FLEET_LICENSE_KEY" = data.aws_secretsmanager_secret.fleet_license.arn },
+    var.fleet_config.extra_secrets
+  ) : {
     name      = k
     valueFrom = v
-  }])
+  }]
+
+  # Repository credentials for private registries
   repository_credentials = var.fleet_config.repository_credentials != "" ? {
     credentialsParameter = var.fleet_config.repository_credentials
   } : null
 }
 
-
-# This creates a certificate via AWS Certificate Manager that we can
-# use with the load balancer for our application, and the DNS record
-# that we use to validate that we actually own the domain.
+# =============================================================================
+# ACM Certificate
+# =============================================================================
 
 resource "aws_acm_certificate" "fleet" {
   domain_name       = var.domain_name
@@ -66,17 +71,9 @@ resource "aws_acm_certificate_validation" "fleet" {
   validation_record_fqdns = [for record in aws_route53_record.fleet_acm_validation : record.fqdn]
 }
 
-# Every application that we want to expose to the internet somehow
-# is going to need some sort of load balancer. This lets us abstract
-# the interface between the user and the containers running the actual
-# application.
-#
-# In this case, we're using a Application Load Balancer (ALB), which
-# is a layer 7 load balancer, which means it operates on HTTP; AWS also
-# offers Network Load Balancers (NLB) which operate on layer 4, which
-# means it operates on TCP. NLBs are used less commonly now, but are
-# used in cases where the traffic is not HTTP or where the container
-# needs to terminate SSL, such as when we're using client-cert auth.
+# =============================================================================
+# Application Load Balancer
+# =============================================================================
 
 module "alb_fleet" {
   source  = "trussworks/alb-web-containers/aws"
@@ -87,26 +84,15 @@ module "alb_fleet" {
   logs_s3_bucket = var.alb_logs_bucket
   logs_s3_prefix = "alb"
 
-  # The SSL policy here describes which protocols and ciphers can be used
-  # to connect to the ALB. You can see a full description of these policies
-  # here:
-  # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html#describe-ssl-policies
   alb_ssl_policy              = "ELBSecurityPolicy-TLS-1-2-2017-01"
   alb_default_certificate_arn = aws_acm_certificate_validation.fleet.certificate_arn
   alb_certificate_arns        = []
   alb_vpc_id                  = var.vpc_id
   alb_subnet_ids              = var.alb_subnets
 
-  # Note that for the container protocol here we're specifying HTTP,
-  # which means the connection between the ALB and the container will
-  # be unencrypted. This is done here for simplicity's sake; in a real
-  # world implementation, we would make this HTTPS and give the container
-  # a self-signed certificate so that the connection between the
-  # containers and the ALB would *also* be encrypted.
   container_protocol = "HTTP"
   container_port     = var.container_port
 
-  # Fleet's health endpoint
   health_check_path     = var.alb_health_check_path
   health_check_interval = var.alb_health_check_interval
   health_check_timeout  = var.alb_health_check_timeout
@@ -117,10 +103,6 @@ module "alb_fleet" {
   allow_public_http  = true
 }
 
-# The ALB module will generate an ALB with a patterned DNS name -- something
-# like "fleet-prod-12345678.us-west-2.elb.amazonaws.com". This name will
-# also get regenerated if we rebuild the ALB for some reason, so if we can,
-# we should make a DNS alias for this ALB that is something more intelligible.
 resource "aws_route53_record" "fleet" {
   name    = var.domain_name
   zone_id = var.dns_zone_id
@@ -133,12 +115,9 @@ resource "aws_route53_record" "fleet" {
   }
 }
 
-# We want to use a KMS key to encrypt our Cloudwatch logs for this
-# service; this keeps the logs encrypted at rest on disk. As a rule, we
-# always want to use encryption like this where we can.
-#
-# This sets up a policy that lets Cloudwatch logs actually use our KMS
-# keys and then creates a key to use for encrypting these logs.
+# =============================================================================
+# CloudWatch Logs
+# =============================================================================
 
 data "aws_iam_policy_document" "cloudwatch_logs_allow_kms" {
   statement {
@@ -146,15 +125,11 @@ data "aws_iam_policy_document" "cloudwatch_logs_allow_kms" {
     effect = "Allow"
 
     principals {
-      type = "AWS"
-      identifiers = [
-        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root",
-      ]
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
     }
 
-    actions = [
-      "kms:*",
-    ]
+    actions   = ["kms:*"]
     resources = ["*"]
   }
 
@@ -181,14 +156,19 @@ data "aws_iam_policy_document" "cloudwatch_logs_allow_kms" {
 resource "aws_kms_key" "fleet_logs" {
   description         = "Key for Fleet ECS log encryption"
   enable_key_rotation = true
-
-  policy = data.aws_iam_policy_document.cloudwatch_logs_allow_kms.json
+  policy              = data.aws_iam_policy_document.cloudwatch_logs_allow_kms.json
 }
 
-# Fleet server private key - used for session encryption
-# This is auto-generated and stored in Secrets Manager
-# This stores the private key in state. We will move to Trussworks patterns in the future
-# These patterns are commented out for now to avoid breaking changes.
+resource "aws_cloudwatch_log_group" "fleet" {
+  name              = "ecs-tasks-fleet-${var.environment}"
+  retention_in_days = var.cloudwatch_logs_retention_days
+  kms_key_id        = aws_kms_key.fleet_logs.arn
+}
+
+# =============================================================================
+# Secrets Manager - Fleet Server Private Key
+# =============================================================================
+
 resource "random_password" "fleet_server_private_key" {
   length  = 32
   special = true
@@ -208,6 +188,7 @@ resource "aws_secretsmanager_secret_version" "fleet_server_private_key" {
   secret_string = random_password.fleet_server_private_key.result
 }
 
+# Cross-account secret policies
 data "aws_secretsmanager_secret" "cross_account" {
   for_each = var.cross_account_secret_policies
   name     = each.key
@@ -228,237 +209,138 @@ resource "aws_secretsmanager_secret_policy" "cross_account" {
   })
 }
 
-# Reference the shared ECS cluster from stacks/ecs-cluster
-# Fleet uses the public Docker Hub image (fleetdm/fleet), so no ECR needed
+# =============================================================================
+# ECS Cluster Reference
+# =============================================================================
+
 data "aws_ecs_cluster" "main" {
   cluster_name = var.ecs_cluster_name
 }
 
-# This will be used when we build fleet images ourselves
-# This data source pulls in the ECR repo for this application so we can
-# use the docker containers stored there. This is created with the
-# aws-example-ecr-repo in the overall namespace.
-# data "aws_ecr_repository" "app_my_webapp" {
-#   name = "app-my-webapp"
-# }
+# =============================================================================
+# Security Group for ECS Tasks
+# =============================================================================
 
-# This is where we're actually defining the Fargate service for this
-# application. The Truss module will seed the task definition for this
-# service with a placeholder helloworld application; we use the CI/CD
-# pipeline to replace that later with the real task definition.
+resource "aws_security_group" "fleet_ecs" {
+  name        = "fleet-${var.environment}-ecs"
+  description = "Fleet ECS Service Security Group"
+  vpc_id      = var.vpc_id
 
-module "ecs_service_fleet" {
-  source  = "trussworks/ecs-service/aws"
-  version = "~> 8.0.0"
-
-  name                  = "fleet"
-  environment           = var.environment
-  target_container_name = "fleet"
-
-  logs_cloudwatch_retention = var.cloudwatch_logs_retention_days
-  logs_cloudwatch_group     = format("ecs-tasks-fleet-%s", var.environment)
-  # Fleet uses Docker Hub (fleetdm/fleet), not ECR. Default allows any registry.
-  ecr_repo_arns = ["*"]
-  # ecr_repo_arns                 = [data.aws_ecr_repository.app_my_webapp.arn] # For when we build fleet image ourselves
-  ecs_cluster = {
-    arn  = data.aws_ecs_cluster.main.arn
-    name = data.aws_ecs_cluster.main.cluster_name
+  egress {
+    description      = "Egress to all"
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
-  ecs_subnet_ids                = var.ecs_subnets
-  ecs_use_fargate               = true
-  ecs_vpc_id                    = var.vpc_id
-  tasks_desired_count           = var.tasks_desired_count
-  tasks_minimum_healthy_percent = 100
-  tasks_maximum_percent         = 200
 
-  # ALB integration
-  associate_alb      = true
-  alb_security_group = module.alb_fleet.alb_security_group_id
+  ingress {
+    description     = "Ingress from ALB"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "TCP"
+    security_groups = [module.alb_fleet.alb_security_group_id]
+  }
+}
 
-  lb_target_groups = [
-    {
-      container_port              = var.container_port
-      container_health_check_port = var.container_port
-      lb_target_group_arn         = module.alb_fleet.alb_target_group_id
+# =============================================================================
+# IAM Roles
+# =============================================================================
+
+data "aws_iam_policy_document" "ecs_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+    principals {
+      identifiers = ["ecs.amazonaws.com", "ecs-tasks.amazonaws.com"]
+      type        = "Service"
     }
-  ]
-  kms_key_id = aws_kms_key.fleet_logs.arn
-
-  container_definitions = jsonencode(
-    concat([
-      {
-        name        = "fleet"
-        image       = var.fleet_config.image
-        cpu         = var.fleet_config.cpu
-        memory      = var.fleet_config.mem
-        mountPoints = var.fleet_config.mount_points
-        dependsOn   = var.fleet_config.depends_on
-        volumesFrom = []
-        essential   = true
-        command     = ["sh", "-c", "fleet prepare db --no-prompt && fleet serve"]
-        portMappings = [
-          {
-            # This port is the same that the contained application also uses
-            containerPort = 8080
-            protocol      = "tcp"
-          }
-        ]
-        repositoryCredentials = local.repository_credentials
-        networkMode           = "awsvpc"
-        logConfiguration = {
-          logDriver = "awslogs"
-          options = {
-            # Trussworks module creates the log group via logs_cloudwatch_group
-            awslogs-group         = format("ecs-tasks-fleet-%s", var.environment)
-            awslogs-region        = data.aws_region.current.name
-            awslogs-stream-prefix = var.fleet_config.awslogs.prefix
-          }
-        },
-        ulimits = [
-          {
-            name      = "nofile"
-            softLimit = 999999
-            hardLimit = 999999
-          }
-        ],
-        secrets = concat([
-          {
-            name      = "FLEET_MYSQL_PASSWORD"
-            valueFrom = "${var.fleet_config.database.password_secret_arn}:password::"
-          },
-          {
-            name      = "FLEET_MYSQL_READ_REPLICA_PASSWORD"
-            valueFrom = "${var.fleet_config.database.password_secret_arn}:password::"
-          },
-          {
-            name      = "FLEET_SERVER_PRIVATE_KEY"
-            valueFrom = aws_secretsmanager_secret.fleet_server_private_key.arn
-          }
-        ], local.secrets)
-        environment = concat([
-          {
-            name  = "FLEET_MYSQL_USERNAME"
-            value = var.fleet_config.database.user
-          },
-          {
-            name  = "FLEET_MYSQL_DATABASE"
-            value = var.fleet_config.database.database
-          },
-          {
-            name  = "FLEET_MYSQL_ADDRESS"
-            value = var.fleet_config.database.address
-          },
-          {
-            name  = "FLEET_MYSQL_READ_REPLICA_USERNAME"
-            value = var.fleet_config.database.user
-          },
-          {
-            name  = "FLEET_MYSQL_READ_REPLICA_DATABASE"
-            value = var.fleet_config.database.database
-          },
-          {
-            name  = "FLEET_MYSQL_READ_REPLICA_ADDRESS"
-            value = var.fleet_config.database.rr_address == null ? var.fleet_config.database.address : var.fleet_config.database.rr_address
-          },
-          {
-            name  = "FLEET_REDIS_ADDRESS"
-            value = var.fleet_config.redis.address
-          },
-          {
-            name  = "FLEET_REDIS_USE_TLS"
-            value = tostring(var.fleet_config.redis.use_tls)
-          },
-          {
-            name  = "FLEET_SERVER_TLS"
-            value = "false"
-          },
-          {
-            # Bucket provided by shared S3/CloudFront module (with Munki)
-            name  = "FLEET_S3_SOFTWARE_INSTALLERS_BUCKET"
-            value = var.fleet_config.software_installers.bucket_name
-          },
-          {
-            name  = "FLEET_S3_SOFTWARE_INSTALLERS_PREFIX"
-            value = var.fleet_config.software_installers.s3_object_prefix
-          },
-        ], local.environment)
-      }
-  ], var.fleet_config.sidecars))
-}
-
-# KMS Key used by AWS Parameter Store
-data "aws_kms_alias" "kms_ssm_key" {
-  name = "alias/aws/ssm"
-}
-
-# This policy for the ECS task role lets it access the AWS Parameter
-# Store. This isn't strictly necessary, but it's a common pattern at
-# Truss to store environment variables for applications in the Parameter
-# Store and retrieve them at runtime with chamber, so this is something
-# we'll see often.
-
-data "aws_iam_policy_document" "fleet_task_role" {
-
-  statement {
-    actions = [
-      "ssm:DescribeParameters"
-    ]
-    resources = [
-      "*"
-    ]
-  }
-
-  # Allow access to the environment specific app secrets
-  statement {
-    actions = [
-      "ssm:GetParametersByPath"
-    ]
-    resources = [
-      format("arn:aws:ssm:*:*:parameter/fleet-%s/*", var.environment)
-    ]
-  }
-
-  # Allow decryption of Parameter Store values
-  statement {
-    actions = [
-      "kms:ListKeys",
-      "kms:ListAliases",
-      "kms:Describe*",
-      "kms:Decrypt",
-    ]
-
-    resources = [
-      "${data.aws_kms_alias.kms_ssm_key.target_key_arn}"
-    ]
   }
 }
 
-resource "aws_iam_role_policy" "fleet_task_role" {
-  name   = format("%s-policy", module.ecs_service_fleet.task_role_name)
-  role   = module.ecs_service_fleet.task_role_name
-  policy = data.aws_iam_policy_document.fleet_task_role.json
+# Task Role - what the container can do
+resource "aws_iam_role" "fleet_task" {
+  name               = "fleet-${var.environment}-task-role"
+  description        = "IAM role that Fleet application assumes when running in ECS"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume_role.json
 }
 
-# Execution role policy - allows ECS to pull secrets before container starts
-data "aws_iam_policy_document" "fleet_execution_role" {
+# Execution Role - what ECS agent can do (pull images, get secrets)
+resource "aws_iam_role" "fleet_execution" {
+  name               = "fleet-${var.environment}-execution-role"
+  description        = "The execution role for Fleet in ECS"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "fleet_execution_ecs" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  role       = aws_iam_role.fleet_execution.name
+}
+
+# Execution role - secrets access
+data "aws_iam_policy_document" "fleet_execution" {
   statement {
+    effect  = "Allow"
     actions = ["secretsmanager:GetSecretValue"]
     resources = [
-      aws_secretsmanager_secret.fleet_server_private_key.arn,
       var.fleet_config.database.password_secret_arn,
+      aws_secretsmanager_secret.fleet_server_private_key.arn,
       data.aws_secretsmanager_secret.fleet_license.arn,
     ]
   }
 }
 
-resource "aws_iam_role_policy" "fleet_execution_role" {
-  name   = format("%s-secrets", module.ecs_service_fleet.task_execution_role_name)
-  role   = module.ecs_service_fleet.task_execution_role_name
-  policy = data.aws_iam_policy_document.fleet_execution_role.json
+resource "aws_iam_role_policy" "fleet_execution" {
+  name   = "fleet-${var.environment}-secrets"
+  role   = aws_iam_role.fleet_execution.name
+  policy = data.aws_iam_policy_document.fleet_execution.json
 }
 
-# Task role policy - S3 software installers
-# Bucket is created by infra-packages module, ARN passed in via fleet_config.software_installers.bucket_arn
+# Task role - CloudWatch metrics
+data "aws_iam_policy_document" "fleet_task" {
+  statement {
+    effect    = "Allow"
+    actions   = ["cloudwatch:PutMetricData"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "fleet_task" {
+  name   = "fleet-${var.environment}-cloudwatch"
+  role   = aws_iam_role.fleet_task.name
+  policy = data.aws_iam_policy_document.fleet_task.json
+}
+
+# Task role - SSM Parameter Store access
+data "aws_kms_alias" "kms_ssm_key" {
+  name = "alias/aws/ssm"
+}
+
+data "aws_iam_policy_document" "fleet_task_ssm" {
+  statement {
+    actions   = ["ssm:DescribeParameters"]
+    resources = ["*"]
+  }
+
+  statement {
+    actions   = ["ssm:GetParametersByPath"]
+    resources = [format("arn:aws:ssm:*:*:parameter/fleet-%s/*", var.environment)]
+  }
+
+  statement {
+    actions   = ["kms:ListKeys", "kms:ListAliases", "kms:Describe*", "kms:Decrypt"]
+    resources = [data.aws_kms_alias.kms_ssm_key.target_key_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "fleet_task_ssm" {
+  name   = "fleet-${var.environment}-ssm"
+  role   = aws_iam_role.fleet_task.name
+  policy = data.aws_iam_policy_document.fleet_task_ssm.json
+}
+
+# Task role - S3 software installers
 data "aws_iam_policy_document" "software_installers" {
   count = var.fleet_config.software_installers.bucket_arn != null ? 1 : 0
 
@@ -483,8 +365,183 @@ data "aws_iam_policy_document" "software_installers" {
 resource "aws_iam_role_policy" "software_installers" {
   count = var.fleet_config.software_installers.bucket_arn != null ? 1 : 0
 
-  name   = "fleet-software-installers-s3"
-  role   = module.ecs_service_fleet.task_role_name
+  name   = "fleet-${var.environment}-s3-software-installers"
+  role   = aws_iam_role.fleet_task.name
   policy = data.aws_iam_policy_document.software_installers[0].json
 }
 
+# =============================================================================
+# ECS Task Definition
+# =============================================================================
+
+resource "aws_ecs_task_definition" "fleet" {
+  family                   = "fleet-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = coalesce(var.fleet_config.task_cpu, var.fleet_config.cpu)
+  memory                   = coalesce(var.fleet_config.task_mem, var.fleet_config.mem)
+  execution_role_arn       = aws_iam_role.fleet_execution.arn
+  task_role_arn            = aws_iam_role.fleet_task.arn
+
+  container_definitions = jsonencode(concat([
+    {
+      name        = "fleet"
+      image       = local.fleet_effective_image
+      cpu         = var.fleet_config.cpu
+      memory      = var.fleet_config.mem
+      essential   = true
+      mountPoints = var.fleet_config.mount_points
+      dependsOn   = var.fleet_config.depends_on
+      volumesFrom = []
+
+      command = ["sh", "-c", "fleet prepare db --no-prompt && fleet serve"]
+
+      portMappings = [{
+        containerPort = 8080
+        protocol      = "tcp"
+      }]
+
+      repositoryCredentials = local.repository_credentials
+      networkMode           = "awsvpc"
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.fleet.name
+          awslogs-region        = data.aws_region.current.name
+          awslogs-stream-prefix = var.fleet_config.awslogs.prefix
+        }
+      }
+
+      ulimits = [{
+        name      = "nofile"
+        softLimit = 999999
+        hardLimit = 999999
+      }]
+
+      secrets = concat([
+        {
+          name      = "FLEET_MYSQL_PASSWORD"
+          valueFrom = "${var.fleet_config.database.password_secret_arn}:password::"
+        },
+        {
+          name      = "FLEET_MYSQL_READ_REPLICA_PASSWORD"
+          valueFrom = "${var.fleet_config.database.password_secret_arn}:password::"
+        },
+        {
+          name      = "FLEET_SERVER_PRIVATE_KEY"
+          valueFrom = aws_secretsmanager_secret.fleet_server_private_key.arn
+        }
+      ], local.secrets)
+
+      environment = concat([
+        { name = "FLEET_MYSQL_USERNAME", value = var.fleet_config.database.user },
+        { name = "FLEET_MYSQL_DATABASE", value = var.fleet_config.database.database },
+        { name = "FLEET_MYSQL_ADDRESS", value = var.fleet_config.database.address },
+        { name = "FLEET_MYSQL_READ_REPLICA_USERNAME", value = var.fleet_config.database.user },
+        { name = "FLEET_MYSQL_READ_REPLICA_DATABASE", value = var.fleet_config.database.database },
+        {
+          name  = "FLEET_MYSQL_READ_REPLICA_ADDRESS"
+          value = coalesce(var.fleet_config.database.rr_address, var.fleet_config.database.address)
+        },
+        { name = "FLEET_REDIS_ADDRESS", value = var.fleet_config.redis.address },
+        { name = "FLEET_REDIS_USE_TLS", value = tostring(var.fleet_config.redis.use_tls) },
+        { name = "FLEET_SERVER_TLS", value = "false" },
+        { name = "FLEET_S3_SOFTWARE_INSTALLERS_BUCKET", value = var.fleet_config.software_installers.bucket_name },
+        { name = "FLEET_S3_SOFTWARE_INSTALLERS_PREFIX", value = var.fleet_config.software_installers.s3_object_prefix },
+      ], local.environment)
+    }
+  ], var.fleet_config.sidecars))
+
+  dynamic "volume" {
+    for_each = var.fleet_config.volumes
+    content {
+      name      = volume.value.name
+      host_path = lookup(volume.value, "host_path", null)
+
+      dynamic "efs_volume_configuration" {
+        for_each = lookup(volume.value, "efs_volume_configuration", [])
+        content {
+          file_system_id = lookup(efs_volume_configuration.value, "file_system_id", null)
+          root_directory = lookup(efs_volume_configuration.value, "root_directory", null)
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# =============================================================================
+# ECS Service
+# =============================================================================
+
+resource "aws_ecs_service" "fleet" {
+  name                               = "fleet-${var.environment}"
+  cluster                            = data.aws_ecs_cluster.main.arn
+  task_definition                    = aws_ecs_task_definition.fleet.arn
+  desired_count                      = var.tasks_desired_count
+  launch_type                        = "FARGATE"
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+  health_check_grace_period_seconds  = 30
+
+  network_configuration {
+    subnets         = var.ecs_subnets
+    security_groups = [aws_security_group.fleet_ecs.id]
+  }
+
+  load_balancer {
+    target_group_arn = module.alb_fleet.alb_target_group_id
+    container_name   = "fleet"
+    container_port   = 8080
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+}
+
+# =============================================================================
+# Autoscaling
+# =============================================================================
+
+resource "aws_appautoscaling_target" "fleet" {
+  max_capacity       = var.fleet_config.autoscaling.max_capacity
+  min_capacity       = var.fleet_config.autoscaling.min_capacity
+  resource_id        = "service/${data.aws_ecs_cluster.main.cluster_name}/${aws_ecs_service.fleet.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "fleet_memory" {
+  name               = "fleet-${var.environment}-memory-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.fleet.resource_id
+  scalable_dimension = aws_appautoscaling_target.fleet.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.fleet.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value = var.fleet_config.autoscaling.memory_tracking_target_value
+  }
+}
+
+resource "aws_appautoscaling_policy" "fleet_cpu" {
+  name               = "fleet-${var.environment}-cpu-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.fleet.resource_id
+  scalable_dimension = aws_appautoscaling_target.fleet.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.fleet.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value = var.fleet_config.autoscaling.cpu_tracking_target_value
+  }
+}
