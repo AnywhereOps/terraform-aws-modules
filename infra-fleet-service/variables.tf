@@ -142,7 +142,7 @@ variable "fleet_config" {
     mem                          = optional(number, 512)
     cpu                          = optional(number, 256)
     pid_mode                     = optional(string, null)
-    image                        = optional(string, "fleetdm/fleet:v4.78.0")
+    image                        = optional(string, "fleetdm/fleet:v4.80.2")
     family                       = optional(string, "fleet")
     sidecars                     = optional(list(any), [])
     depends_on                   = optional(list(any), [])
@@ -243,7 +243,7 @@ variable "fleet_config" {
     mem                          = 512
     cpu                          = 256
     pid_mode                     = null
-    image                        = "fleetdm/fleet:v4.78.0"
+    image                        = "fleetdm/fleet:v4.80.2"
     family                       = "fleet"
     sidecars                     = []
     depends_on                   = []
