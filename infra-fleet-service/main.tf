@@ -297,6 +297,13 @@ resource "aws_iam_role_policy" "fleet_execution" {
   policy = data.aws_iam_policy_document.fleet_execution.json
 }
 
+# Attach extra execution IAM policies (e.g., for CDN signing secrets)
+resource "aws_iam_role_policy_attachment" "fleet_execution_extra" {
+  for_each   = toset(var.fleet_config.extra_execution_iam_policies)
+  policy_arn = each.value
+  role       = aws_iam_role.fleet_execution.name
+}
+
 # Task role - CloudWatch metrics
 data "aws_iam_policy_document" "fleet_task" {
   statement {
