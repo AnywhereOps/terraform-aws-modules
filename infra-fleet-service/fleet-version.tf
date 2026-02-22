@@ -91,12 +91,6 @@ output "fleet_image" {
 # Useful for controlled rollouts (don't always want bleeding edge)
 # =============================================================================
 
-variable "fleet_version_override" {
-  description = "Set to pin a specific Fleet version instead of auto-latest. Leave empty for auto."
-  type        = string
-  default     = ""
-}
-
 locals {
   # Use override if set, otherwise use latest from GitHub
   fleet_effective_version = var.fleet_version_override != "" ? var.fleet_version_override : local.fleet_version

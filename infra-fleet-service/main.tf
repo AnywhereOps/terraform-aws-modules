@@ -507,7 +507,7 @@ resource "aws_ecs_service" "fleet" {
   }
 
   lifecycle {
-    ignore_changes = [desired_count]
+    create_before_destroy = true
   }
 }
 

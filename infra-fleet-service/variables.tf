@@ -318,3 +318,9 @@ variable "fleet_config" {
   nullable    = false
 }
 
+variable "fleet_version_override" {
+  description = "Set to pin a specific Fleet version instead of auto-latest. Leave empty for auto."
+  type        = string
+  default     = ""
+}
+
