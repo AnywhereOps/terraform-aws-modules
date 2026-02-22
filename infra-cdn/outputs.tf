@@ -48,6 +48,7 @@ output "cloudfront_url" {
 output "public_key_id" {
   description = "CloudFront public key ID (for signed URL generation)"
   value       = local.cloudfront_public_key_id
+  sensitive = true
 }
 
 output "key_group_id" {
