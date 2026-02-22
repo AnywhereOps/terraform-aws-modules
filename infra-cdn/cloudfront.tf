@@ -13,8 +13,7 @@ locals {
   resource_name        = "${var.name}-${var.environment}"
   secret_name          = "${var.name}-${var.environment}-cdn-signing"
   cloudfront_url       = var.domain_name != "" ? "https://${var.domain_name}" : "https://${aws_cloudfront_distribution.main.domain_name}"
-  create_acm_cert      = var.domain_name != "" && var.acm_certificate_arn == ""
-  acm_cert_arn         = local.create_acm_cert ? aws_acm_certificate.main[0].arn : var.acm_certificate_arn
+  create_acm_cert      = var.domain_name != ""
   enable_custom_domain = var.domain_name != ""
   enable_logging       = var.logging_bucket != ""
 }
@@ -57,7 +56,7 @@ data "aws_secretsmanager_secret_version" "signing" {
 }
 
 locals {
-  signing_secret         = jsondecode(data.aws_secretsmanager_secret_version.signing.secret_string)
+  signing_secret           = jsondecode(data.aws_secretsmanager_secret_version.signing.secret_string)
   cloudfront_public_key_id = local.signing_secret.cloudfront_public_key_id
 }
 
@@ -136,7 +135,7 @@ data "aws_iam_policy_document" "s3_cloudfront" {
     sid       = "AllowCloudFrontServicePrincipal"
     effect    = "Allow"
     actions   = ["s3:GetObject"]
-    resources = ["${var.s3_bucket_arn}/*"]
+    resources = ["${aws_s3_bucket.packages.arn}/*"]
 
     principals {
       type        = "Service"
@@ -152,7 +151,7 @@ data "aws_iam_policy_document" "s3_cloudfront" {
 }
 
 resource "aws_s3_bucket_policy" "cloudfront" {
-  bucket = var.s3_bucket_id
+  bucket = aws_s3_bucket.packages.id
   policy = data.aws_iam_policy_document.s3_cloudfront.json
 }
 
@@ -171,8 +170,8 @@ resource "aws_cloudfront_distribution" "main" {
   aliases = local.enable_custom_domain ? [var.domain_name] : []
 
   origin {
-    domain_name              = var.s3_bucket_regional_domain_name
-    origin_id                = "S3-${var.s3_bucket_id}"
+    domain_name              = aws_s3_bucket.packages.bucket_regional_domain_name
+    origin_id                = "S3-${aws_s3_bucket.packages.id}"
     origin_path              = var.origin_path != "" ? "/${var.origin_path}" : ""
     origin_access_control_id = aws_cloudfront_origin_access_control.main.id
   }
@@ -180,7 +179,7 @@ resource "aws_cloudfront_distribution" "main" {
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "S3-${var.s3_bucket_id}"
+    target_origin_id       = "S3-${aws_s3_bucket.packages.id}"
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
@@ -207,7 +206,7 @@ resource "aws_cloudfront_distribution" "main" {
 
   viewer_certificate {
     cloudfront_default_certificate = !local.enable_custom_domain
-    acm_certificate_arn            = local.enable_custom_domain ? local.acm_cert_arn : null
+    acm_certificate_arn            = local.enable_custom_domain ? aws_acm_certificate.main[0].arn : null
     ssl_support_method             = local.enable_custom_domain ? "sni-only" : null
     minimum_protocol_version       = local.enable_custom_domain ? "TLSv1.2_2021" : null
   }
