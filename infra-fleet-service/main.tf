@@ -26,7 +26,7 @@ locals {
   secrets = [for k, v in merge(
     { "FLEET_LICENSE_KEY" = data.aws_secretsmanager_secret.fleet_license.arn },
     var.fleet_config.extra_secrets
-  ) : {
+    ) : {
     name      = k
     valueFrom = v
   }]
@@ -129,7 +129,26 @@ data "aws_iam_policy_document" "cloudwatch_logs_allow_kms" {
       identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
     }
 
-    actions   = ["kms:*"]
+    actions = [
+      "kms:Create*",
+      "kms:Describe*",
+      "kms:Enable*",
+      "kms:List*",
+      "kms:Put*",
+      "kms:Update*",
+      "kms:Revoke*",
+      "kms:Disable*",
+      "kms:Get*",
+      "kms:Delete*",
+      "kms:TagResource",
+      "kms:UntagResource",
+      "kms:ScheduleKeyDeletion",
+      "kms:CancelKeyDeletion",
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+    ]
     resources = ["*"]
   }
 
@@ -176,7 +195,7 @@ resource "random_password" "fleet_server_private_key" {
 
 resource "aws_secretsmanager_secret" "fleet_server_private_key" {
   name                    = "fleet-${var.environment}-server-private-key"
-  recovery_window_in_days = 0
+  recovery_window_in_days = 30
 
   lifecycle {
     create_before_destroy = true
@@ -204,7 +223,7 @@ resource "aws_secretsmanager_secret_policy" "cross_account" {
       Effect    = "Allow"
       Principal = { AWS = each.value }
       Action    = "secretsmanager:GetSecretValue"
-      Resource  = "*"
+      Resource  = data.aws_secretsmanager_secret.cross_account[each.key].arn
     }]
   })
 }
