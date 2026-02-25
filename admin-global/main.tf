@@ -10,9 +10,10 @@ module "logs" {
   source  = "trussworks/logs/aws"
   version = "~> 18.0.0"
 
-  default_allow = false
-  allow_alb     = true
-  allow_config  = true
+  default_allow    = false
+  allow_alb        = true
+  allow_config     = true
+  allow_cloudtrail = var.allow_cloudtrail
 
   s3_bucket_name = var.logging_bucket
 }

@@ -67,3 +67,9 @@ variable "guardduty_enabled" {
   type        = bool
   default     = false
 }
+
+variable "allow_cloudtrail" {
+  description = "Allow CloudTrail to write to the logs bucket"
+  type        = bool
+  default     = false
+}
