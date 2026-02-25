@@ -9,8 +9,7 @@ resource "aws_route53_zone" "zones" {
 # Query logging for each zone (requires us-east-1 provider)
 module "query_logging" {
   for_each = var.core_infra ? toset(var.domains) : toset([])
-  source   = "trussworks/route53-query-logs/aws"
-  version  = "~> 4.0.0"
+  source = "git::https://github.com/trussworks/terraform-aws-route53-query-logs.git?ref=v4.0.0"
 
   providers = { aws.us-east-1 = aws.us-east-1 }
 

@@ -36,8 +36,7 @@ resource "aws_guardduty_organization_configuration" "main_useast1" {
 # GuardDuty notifications to Slack
 module "guardduty_notifications_useast2" {
   count   = var.guardduty_enabled ? 1 : 0
-  source  = "trussworks/guardduty-notifications/aws"
-  version = "~> 6.0.0"
+  source = "git::https://github.com/trussworks/terraform-aws-guardduty-notifications.git?ref=v6.0.0"
 
   pagerduty_notifications = false
   slack_notifications     = true
@@ -51,8 +50,7 @@ module "guardduty_notifications_useast1" {
     aws = aws.us-east-1
   }
 
-  source  = "trussworks/guardduty-notifications/aws"
-  version = "~> 6.0.0"
+  source = "git::https://github.com/trussworks/terraform-aws-guardduty-notifications.git?ref=v6.0.0"
 
   pagerduty_notifications = false
   slack_notifications     = true

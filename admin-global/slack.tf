@@ -138,8 +138,7 @@ module "notify_slack_useast1" {
     aws = aws.us-east-1
   }
 
-  source  = "terraform-aws-modules/notify-slack/aws"
-  version = "~> 7.2.0"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-notify-slack.git?ref=v7.2.0"
 
   lambda_function_name = "notify_slack_useast1"
   create_sns_topic     = false
@@ -153,8 +152,7 @@ module "notify_slack_useast1" {
 module "notify_slack_useast2" {
   count = var.slack_enabled ? 1 : 0
 
-  source  = "terraform-aws-modules/notify-slack/aws"
-  version = "~> 7.2.0"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-notify-slack.git?ref=v7.2.0"
 
   lambda_function_name = "notify_slack_useast2"
   create_sns_topic     = false

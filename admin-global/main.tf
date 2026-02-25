@@ -7,8 +7,7 @@ data "aws_iam_account_alias" "current" {}
 #
 
 module "logs" {
-  source  = "trussworks/logs/aws"
-  version = "~> 18.0.0"
+  source = "git::https://github.com/trussworks/terraform-aws-logs.git?ref=v18.0.0"
 
   default_allow    = false
   allow_alb        = true
@@ -23,8 +22,7 @@ module "logs" {
 #
 
 module "config" {
-  source  = "trussworks/config/aws"
-  version = "~> 8.0"
+  source = "git::https://github.com/trussworks/terraform-aws-config.git?ref=v8.0.0"
 
   config_name        = format("%s-config-%s", data.aws_iam_account_alias.current.account_alias, var.region)
   config_logs_bucket = module.logs.aws_logs_bucket
@@ -40,8 +38,7 @@ module "config" {
 # role in this account. See the README for more details at
 # https://github.com/trussworks/terraform-aws-iam-cross-acct-dest
 module "infra_role" {
-  source  = "trussworks/iam-cross-acct-dest/aws"
-  version = "4.0.0"
+  source = "git::https://github.com/trussworks/terraform-aws-iam-cross-acct-dest.git?ref=v4.0.0"
 
   iam_role_name     = "infra"
   source_account_id = var.account_id_id
